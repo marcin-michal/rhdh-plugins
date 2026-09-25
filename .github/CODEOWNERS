@@ -36,6 +36,7 @@
 /workspaces/konflux                                 @redhat-developer/rhdh-plugins-maintainers @rrosatti @sahil143 @milantaky
 /workspaces/x2a                                     @redhat-developer/rhdh-plugins-maintainers @mareklibra @eloycoto @yray-pixel
 /workspaces/dcm                                     @redhat-developer/rhdh-plugins-maintainers @asmasarw @jkilzi @mareklibra
+/workspaces/product-portfolio                       @redhat-developer/rhdh-plugins-maintainers @marcin-michal @sahil143
 
 # AI agent configuration — requires maintainer approval to prevent
 # agents from modifying their own guardrails.
