@@ -15,14 +15,21 @@
     "build:knip-reports": "backstage-repo-tools knip-reports",
     "clean": "backstage-cli repo clean",
     "test": "backstage-cli repo test",
-    "test:all": "backstage-cli repo test --coverage",
+    "test:all": "node scripts/test-acceptance.mjs",
     "fix": "backstage-cli repo fix",
     "lint": "backstage-cli repo lint --since origin/main",
     "lint:all": "backstage-cli repo lint",
     "prettier:check": "prettier --check .",
     "prettier:fix": "prettier --write .",
     "new": "backstage-cli new --scope @red-hat-developer-hub",
-    "postinstall": "cd ../../ && yarn install"
+    "postinstall": "node scripts/postinstall.mjs",
+    "test:acceptance": "node scripts/test-acceptance.mjs",
+    "test:db": "node scripts/test-db.mjs",
+    "export-dynamic": "node scripts/export-dynamic.mjs",
+    "test:export": "node --test test/compatibility/dynamicExport.test.mjs",
+    "package:oci": "node scripts/package-oci.mjs",
+    "test:install:rhdh-1.10.3": "node --test test/compatibility/oci.installation.smoke.test.mjs",
+    "verify:release": "node scripts/verify-release.mjs"
   },
   "workspaces": [
     "packages/*",
@@ -39,8 +46,14 @@
     "@backstage/e2e-test-utils": "^0.1.2",
     "@backstage/repo-tools": "^0.17.0",
     "@changesets/cli": "^2.27.1",
+    "@jest/environment-jsdom-abstract": "30.3.0",
+    "@red-hat-developer-hub/cli": "1.10.8",
+    "@types/jest": "30.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
+    "jest": "30.3.0",
+    "jest-junit": "16.0.0",
+    "jsdom": "27.1.0",
     "knip": "^5.27.4",
     "node-gyp": "^10.0.0",
     "prettier": "^2.3.2",
@@ -48,7 +61,13 @@
   },
   "resolutions": {
     "@types/react": "^18",
-    "@types/react-dom": "^18"
+    "@types/react-dom": "^18",
+    "@backstage/backend-plugin-api": "1.8.0",
+    "@backstage/plugin-catalog-node": "2.1.0",
+    "@backstage/catalog-client": "1.14.0",
+    "@backstage/catalog-model": "1.7.7",
+    "@backstage/config": "1.3.6",
+    "@backstage/backend-defaults": "0.16.0"
   },
   "prettier": "@backstage/cli/config/prettier",
   "lint-staged": {
@@ -58,6 +77,33 @@
     ],
     "*.{json,md}": [
       "prettier --write"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.d.ts",
+      "!**/*.test.ts",
+      "!**/setupTests.ts",
+      "!**/testSupport.ts",
+      "!**/index.ts",
+      "!**/ports.ts"
+    ],
+    "coverageReporters": [
+      "text",
+      "json",
+      "json-summary",
+      "lcov"
+    ],
+    "coveragePathIgnorePatterns": [
+      "/node_modules/",
+      "\\.d\\.ts$",
+      "\\.test\\.ts$",
+      "/setupTests\\.ts$",
+      "/testSupport\\.ts$",
+      "/index\\.ts$",
+      "/ports\\.ts$"
     ]
   }
 }

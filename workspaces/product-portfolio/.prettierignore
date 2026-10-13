@@ -1,5 +1,7 @@
 dist
 dist-types
 coverage
+dist-dynamic
+release-evidence
 .vscode
 .eslintrc.js

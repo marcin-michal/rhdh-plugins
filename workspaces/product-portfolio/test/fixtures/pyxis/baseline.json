@@ -1,0 +1,99 @@
+{
+  "listings": [
+    {
+      "_id": "100000000000000000000001",
+      "name": "Platform",
+      "vendor_label": "redhat",
+      "team_id": "300000000000000000000001",
+      "repositories": ["200000000000000000000001", "200000000000000000000002"],
+      "published": true,
+      "deleted": false,
+      "last_update_date": "2026-01-01T00:00:00Z"
+    },
+    {
+      "_id": "100000000000000000000002",
+      "name": "Runtime",
+      "vendor_label": "redhat",
+      "team_id": "300000000000000000000002",
+      "repositories": ["200000000000000000000002"],
+      "published": true,
+      "deleted": false,
+      "last_update_date": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "repositories": [
+    {
+      "_id": "200000000000000000000001",
+      "vendor_label": "redhat",
+      "registry": "registry.example.test",
+      "repository": "platform/base",
+      "display_data": {
+        "name": "Base"
+      },
+      "team_id": "300000000000000000000001",
+      "product_listings": ["100000000000000000000001"],
+      "published": true,
+      "last_update_date": "2026-01-01T00:00:00Z"
+    },
+    {
+      "_id": "200000000000000000000002",
+      "vendor_label": "redhat",
+      "registry": "registry.example.test",
+      "repository": "platform/shared",
+      "display_data": {
+        "name": "Shared"
+      },
+      "team_id": "300000000000000000000002",
+      "product_listings": [
+        "100000000000000000000001",
+        "100000000000000000000002"
+      ],
+      "published": false,
+      "last_update_date": "2026-01-01T00:00:00Z"
+    },
+    {
+      "_id": "200000000000000000000003",
+      "vendor_label": "redhat",
+      "registry": "registry.example.test",
+      "repository": "platform/unlisted",
+      "display_data": {
+        "name": "Unlisted"
+      },
+      "team_id": "300000000000000000000001",
+      "product_listings": [],
+      "published": true,
+      "last_update_date": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "teams": [
+    {
+      "_id": "300000000000000000000001",
+      "name": "Alpha",
+      "members": [
+        {
+          "user_id": "person-A",
+          "role": "Member",
+          "added_date": "2025-01-01T00:00:00Z"
+        },
+        {
+          "user_id": "person-B",
+          "role": "Product Manager",
+          "added_date": "2025-01-01T00:00:00Z"
+        }
+      ],
+      "last_update_date": "2026-01-01T00:00:00Z"
+    },
+    {
+      "_id": "300000000000000000000002",
+      "name": "Beta",
+      "members": [
+        {
+          "user_id": "person-B",
+          "role": "Member",
+          "added_date": "2025-01-01T00:00:00Z"
+        }
+      ],
+      "last_update_date": "2026-01-01T00:00:00Z"
+    }
+  ]
+}

@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "scenarios": [
+    {
+      "id": "vendor-admission",
+      "jobs": ["unit"],
+      "tests": ["vendor-admission"]
+    },
+    {
+      "id": "source-normalization",
+      "jobs": ["unit"],
+      "tests": ["source-normalization"]
+    },
+    {
+      "id": "stable-identity",
+      "jobs": ["unit"],
+      "tests": ["stable-identity"]
+    },
+    {
+      "id": "ownership",
+      "jobs": ["unit"],
+      "tests": ["ownership"]
+    },
+    {
+      "id": "membership-roster",
+      "jobs": ["unit"],
+      "tests": ["membership-roster"]
+    },
+    {
+      "id": "identity-coexistence",
+      "jobs": ["unit"],
+      "tests": ["identity-coexistence"]
+    },
+    {
+      "id": "associations",
+      "jobs": ["unit"],
+      "tests": ["associations"]
+    },
+    {
+      "id": "entity-validity",
+      "jobs": ["unit"],
+      "tests": ["entity-validity"]
+    },
+    {
+      "id": "http-query-contract",
+      "jobs": ["unit"],
+      "tests": ["http-query-contract"]
+    },
+    {
+      "id": "pagination",
+      "jobs": ["unit"],
+      "tests": ["pagination"]
+    },
+    {
+      "id": "failure-classification",
+      "jobs": ["unit"],
+      "tests": ["failure-classification"]
+    },
+    {
+      "id": "retry-cancellation",
+      "jobs": ["unit"],
+      "tests": ["retry-cancellation"]
+    },
+    {
+      "id": "actual-tls",
+      "jobs": ["unit"],
+      "tests": ["actual-tls"]
+    },
+    {
+      "id": "configuration",
+      "jobs": ["unit"],
+      "tests": ["configuration"]
+    },
+    {
+      "id": "prior-inventory",
+      "jobs": ["unit"],
+      "tests": ["prior-inventory"]
+    },
+    {
+      "id": "reconciliation-guards",
+      "jobs": ["unit"],
+      "tests": ["reconciliation-guards"]
+    },
+    {
+      "id": "membership-removal",
+      "jobs": ["unit"],
+      "tests": ["membership-removal"]
+    },
+    {
+      "id": "module-behavior",
+      "jobs": ["unit"],
+      "tests": ["module-behavior"]
+    },
+    {
+      "id": "processed-catalog-graph",
+      "jobs": ["unit", "database"],
+      "tests": ["processed-catalog-graph"]
+    },
+    {
+      "id": "preservation-recovery",
+      "jobs": ["unit", "database"],
+      "tests": ["preservation-recovery"]
+    },
+    {
+      "id": "processed-projection-safety",
+      "jobs": ["unit"],
+      "tests": ["processed-projection-safety"]
+    },
+    {
+      "id": "scheduling-database-behavior",
+      "jobs": ["unit", "database"],
+      "tests": ["scheduling-database-behavior"]
+    },
+    {
+      "id": "observability",
+      "jobs": ["unit"],
+      "tests": ["observability"]
+    },
+    {
+      "id": "processed-catalog-graph-postgres",
+      "jobs": ["database"],
+      "tests": ["processed-catalog-graph preservation-recovery.*POSTGRES_16"]
+    },
+    {
+      "id": "scheduling-database-behavior-postgres",
+      "jobs": ["database"],
+      "tests": ["scheduling-database-behavior real scheduler.*POSTGRES_16"]
+    },
+    {
+      "id": "export-contents",
+      "jobs": ["export"],
+      "tests": ["export-contents export contents"]
+    },
+    {
+      "id": "oci-target-installation",
+      "jobs": ["installation"],
+      "tests": ["oci-target-installation exact RHDH installer"]
+    },
+    {
+      "id": "configurable-vendor-admission-policy",
+      "jobs": ["unit"],
+      "tests": [
+        "vendor-admission with redhat-only",
+        "vendor-admission with redhat-or-unlabeled",
+        "reconciliation-guards configurable-vendor-admission-policy vendor policy transitions",
+        "entity-validity configurable-vendor-admission-policy",
+        "processed-catalog-graph preservation-recovery.*restart with redhat-or-unlabeled"
+      ]
+    }
+  ]
+}

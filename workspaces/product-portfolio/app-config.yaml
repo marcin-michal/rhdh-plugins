@@ -1,0 +1,16 @@
+app:
+  title: Product Portfolio development backend
+  baseUrl: http://localhost:3000
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    host: 127.0.0.1
+    port: 7007
+  database:
+    client: better-sqlite3
+    connection: ':memory:'
+catalog:
+  rules:
+    - allow: [Resource, Group, User]
+# Add mounted mTLS credentials and stable source IDs in app-config.local.yaml.
+# No ingestion is registered until both source and provider configuration exist.

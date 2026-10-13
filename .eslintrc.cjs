@@ -253,6 +253,14 @@ module.exports = {
       },
     },
     {
+      // .mjs is not matched by **/*.[jt]s?(x); parse it as modern ESM.
+      files: ['**/*.mjs'],
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    {
       files: ['**/*.[jt]s?(x)'],
       excludedFiles: '**/*.{test,spec}.[jt]s?(x)',
       rules: {

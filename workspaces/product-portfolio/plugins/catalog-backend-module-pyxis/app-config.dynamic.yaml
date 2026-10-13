@@ -1,0 +1,19 @@
+pyxis:
+  sources:
+    internal:
+      endpoint: ${PYXIS_GRAPHQL_ENDPOINT}
+      certificateFile: ${PYXIS_CERTIFICATE_FILE}
+      keyFile: ${PYXIS_KEY_FILE}
+      caFile: ${PYXIS_CA_FILE}
+catalog:
+  providers:
+    pyxis:
+      internal:
+        namespace: pyxis
+        paused: false
+        vendorPolicy: redhat-only
+        absenceDeletion: retain
+        schedule:
+          frequencySeconds: 3600
+          timeoutSeconds: 600
+          initialDelaySeconds: 15
