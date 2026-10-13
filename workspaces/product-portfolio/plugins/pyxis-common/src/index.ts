@@ -21,6 +21,9 @@ import type {
   SourceKey,
 } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 
+export * from './chi';
+export * from './chiSummary';
+
 /** Catalog source kinds @public */
 export type PyxisKind = 'listing' | 'repository' | 'team' | 'user';
 

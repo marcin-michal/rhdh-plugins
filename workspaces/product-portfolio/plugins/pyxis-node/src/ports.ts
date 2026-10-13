@@ -21,9 +21,11 @@ import type {
 import type {
   HostIdentityBinding,
   InventorySnapshot,
+  RepositoryChiSnapshot,
   SourceListing,
   SourceRepository,
   SourceTeam,
+  VendorEvidence,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 
 /** Cancellation and absolute deadline apply to the entire read. @public */
@@ -75,6 +77,88 @@ export interface PyxisReadClient {
   ): Promise<Lookup<SourceRepository>>;
   getTeam(id: string, options: ReadOptions): Promise<Lookup<SourceTeam>>;
   close(): Promise<void>;
+}
+
+/** Minimal repository metadata needed to select and mask CHI. @public */
+export interface RepositoryChiContext {
+  id: string;
+  registry: string;
+  repository: string;
+  vendor: Pick<VendorEvidence, 'wirePresence' | 'wireValue'>;
+  published: boolean | null;
+  hiddenUntil: string | null;
+  sourceUpdatedAt: string | null;
+  contentStreamTags: readonly string[] | null;
+  includesMultipleContentStreams: boolean | null;
+}
+
+/** Minimal repository association on an image candidate. @public */
+export interface ChiCandidate {
+  _id: string;
+  architecture: string | null;
+  deleted: boolean | null;
+  repositories: readonly {
+    registry: string;
+    repository: string;
+    published: boolean | null;
+    push_date: string | null;
+    tags: readonly {
+      name: string;
+      added_date: string | null;
+      removed_date: string | null;
+    }[];
+  }[];
+}
+
+/** Validated keyset page from the repository-specific image query. @public */
+export interface ChiCandidatePage {
+  data: readonly ChiCandidate[];
+  page: 0;
+  pageSize: number;
+}
+
+/** Minimal selected-image identity plus optional raw grade periods. @public */
+export interface SelectedImageChi extends ChiCandidate {
+  freshness_grades?: unknown;
+}
+
+/** Narrow CHI transport implemented by the shared source client. @public */
+export interface PyxisChiReadClient {
+  getRepositoryChiContext(
+    id: string,
+    options: ReadOptions,
+  ): Promise<Lookup<RepositoryChiContext>>;
+  listRepositoryChiCandidates(
+    request: ReadOptions & {
+      registry: string;
+      repository: string;
+      streams: readonly string[];
+      afterId?: string;
+      pageSize: number;
+    },
+  ): Promise<ChiCandidatePage>;
+  getSelectedImageChi(
+    id: string,
+    options: ReadOptions & { includeGrades: boolean },
+  ): Promise<Lookup<SelectedImageChi>>;
+}
+
+/** Result of a complete read or a conservative failed observation. @public */
+export type RepositoryChiReadResult =
+  | { state: 'complete'; snapshot: RepositoryChiSnapshot }
+  | {
+      state: 'unavailable';
+      attemptedAt: string;
+      code: import('@red-hat-developer-hub/backstage-plugin-pyxis-common').ChiFailureCode;
+      suppression?: { hiddenUntil: string; observedAt: string };
+    };
+
+/** Repository snapshot acquisition port. @public */
+export interface PyxisChiReadPort {
+  readRepository(
+    source: SourceKey<'repository'>,
+    options: ReadOptions,
+  ): Promise<RepositoryChiReadResult>;
 }
 
 /** Restricted ingestion port; not an end-user authorization bypass. @public */

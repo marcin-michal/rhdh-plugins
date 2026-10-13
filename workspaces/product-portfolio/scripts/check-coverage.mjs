@@ -59,7 +59,9 @@ export function checkCoverage(report, implementationFiles) {
     }
 
     if (
-      /(normalization|inventory|projection|reconciliation)\.ts$/.test(filename)
+      /(normalization|inventory|projection|reconciliation|chiSelection|chiNormalization|chiSummary)\.ts$/.test(
+        filename,
+      )
     ) {
       assert(
         counts.branches.every(value => value > 0),
@@ -94,7 +96,7 @@ export function implementationFiles() {
       filename =>
         /\/src\/.*\.ts$/.test(filename) &&
         !/\/(node_modules|dist|dist-types|dist-dynamic)\//.test(filename) &&
-        !/(\.d\.ts|\.test\.ts|\/index\.ts|\/ports\.ts|\/setupTests\.ts|\/testSupport\.ts)$/.test(
+        !/(\.d\.ts|\.test\.ts|\/index\.ts|\/ports\.ts|\/chi\.ts|\/setupTests\.ts|\/testSupport\.ts)$/.test(
           filename,
         ),
     )

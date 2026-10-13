@@ -25,12 +25,34 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve, join } from 'node:path';
+import { resolve, join, relative, isAbsolute, sep } from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 export const moduleDirectory = resolve('plugins/catalog-backend-module-pyxis');
 export const exportDirectory = join(moduleDirectory, 'dist-dynamic');
+const embeddedLibraries = [
+  '@red-hat-developer-hub/backstage-plugin-product-portfolio-common',
+  '@red-hat-developer-hub/backstage-plugin-pyxis-common',
+  '@red-hat-developer-hub/backstage-plugin-pyxis-node',
+];
+
+function assertInsideExport(filename, description) {
+  const pathFromExport = relative(exportDirectory, filename);
+  assert(
+    pathFromExport &&
+      !isAbsolute(pathFromExport) &&
+      pathFromExport !== '..' &&
+      !pathFromExport.startsWith(`..${sep}`),
+    `${description} resolves outside the export`,
+  );
+  assert(existsSync(filename), `${description} is missing`);
+}
+
+function readPackage(directory) {
+  return JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'));
+}
+
 export function verifyExport() {
   const stamp = JSON.parse(
     readFileSync('release-evidence/export-source-state.json', 'utf8'),
@@ -50,18 +72,100 @@ export function verifyExport() {
     Object.values(dependencies).every(value => !value.startsWith('workspace:')),
     'Workspace references escaped export',
   );
-  for (const library of [
-    'product-portfolio-common',
-    'pyxis-common',
-    'pyxis-node',
-  ])
+  const lockfile = readFileSync(join(exportDirectory, 'yarn.lock'), 'utf8');
+  const packageMap = JSON.parse(
+    readFileSync(
+      join(exportDirectory, 'node_modules/.package-map.json'),
+      'utf8',
+    ),
+  ).packages;
+  const embeddedDirectory = join(exportDirectory, 'embedded');
+  const embeddedPackages = readdirSync(embeddedDirectory).map(directory => {
+    const path = join(embeddedDirectory, directory);
+    return { directory, path, manifest: readPackage(path) };
+  });
+
+  for (const match of lockfile.matchAll(/file:(\.\.?\/[^:#\s"]+)/g)) {
+    const target = resolve(exportDirectory, match[1]);
+    assertInsideExport(target, `Local dependency ${match[1]}`);
+  }
+
+  for (const library of embeddedLibraries) {
+    assert(Object.hasOwn(dependencies, library), `Missing library: ${library}`);
     assert(
-      !Object.hasOwn(
-        dependencies,
-        `@red-hat-developer-hub/backstage-plugin-${library}`,
-      ),
-      `Library not embedded: ${library}`,
+      !lockfile.includes(`"${library}@npm:`),
+      `Private library resolves from npm: ${library}`,
     );
+
+    const embedded = embeddedPackages.filter(
+      candidate => candidate.manifest.name === library,
+    );
+    assert.equal(
+      embedded.length,
+      1,
+      `Library not embedded exactly once: ${library}`,
+    );
+    const [bundle] = embedded;
+    const localLocator = `${library}@file:./embedded/${bundle.directory}`;
+    assert(
+      lockfile.includes(localLocator),
+      `Library has no local lockfile resolution: ${library}`,
+    );
+
+    const runtimeMapping = packageMap[library];
+    assert(
+      runtimeMapping,
+      `Library has no runtime package mapping: ${library}`,
+    );
+    assert.equal(
+      packageMap['.']?.dependencies?.[library],
+      library,
+      `Root runtime mapping is missing: ${library}`,
+    );
+    const runtimeDirectory = resolve(
+      exportDirectory,
+      'node_modules',
+      runtimeMapping.url,
+    );
+    assertInsideExport(runtimeDirectory, `Runtime library ${library}`);
+    const runtimePackage = readPackage(runtimeDirectory);
+    assert.equal(runtimePackage.name, library);
+    assert.equal(runtimePackage.version, bundle.manifest.version);
+    assert.match(runtimePackage.version, /\+embedded$/);
+
+    for (const [description, directory, manifest] of [
+      ['Embedded', bundle.path, bundle.manifest],
+      ['Runtime', runtimeDirectory, runtimePackage],
+    ]) {
+      assert(
+        manifest.main,
+        `${description} library has no main file: ${library}`,
+      );
+      assertInsideExport(
+        resolve(directory, manifest.main),
+        `${description} library entrypoint ${library}`,
+      );
+    }
+    assert.equal(
+      createHash('sha256')
+        .update(readFileSync(resolve(bundle.path, bundle.manifest.main)))
+        .digest('hex'),
+      createHash('sha256')
+        .update(readFileSync(resolve(runtimeDirectory, runtimePackage.main)))
+        .digest('hex'),
+      `Runtime library differs from embedded bundle: ${library}`,
+    );
+  }
+
+  const backstageRuntimeDirectory = join(
+    exportDirectory,
+    'node_modules/@backstage',
+  );
+  assert(
+    !existsSync(backstageRuntimeDirectory) ||
+      readdirSync(backstageRuntimeDirectory).length === 0,
+    'Export contains duplicated Backstage framework packages',
+  );
   assert(pkg.configSchema, 'Missing generated configuration schema');
   if (typeof pkg.configSchema === 'string')
     assert(

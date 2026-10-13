@@ -74,6 +74,7 @@ export function sourceName(source: SourceKey<PyxisKind>): string {
   }-${encoded}`;
 }
 
+/** Fully qualified catalog reference for a stable source identity. @public */
 export function sourceRef(source: SourceKey<PyxisKind>): string {
   const kind = {
     listing: 'resource',
@@ -85,6 +86,7 @@ export function sourceRef(source: SourceKey<PyxisKind>): string {
   return `${kind}:pyxis/${sourceName(source)}`;
 }
 
+/** Classify bounded vendor evidence under the selected admission policy. @public */
 export function classifyVendor(
   record: { vendor_label?: unknown },
   policy: VendorPolicy = 'redhat-only',

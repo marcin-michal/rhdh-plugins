@@ -52,6 +52,25 @@ export interface Config {
             timeoutSeconds?: number;
             initialDelaySeconds?: number;
           };
+          chi?: {
+            enabled?: boolean;
+            refreshIntervalSeconds?: number;
+            retryIntervalSeconds?: number;
+            staleAfterSeconds?: number;
+            readTimeoutSeconds?: number;
+            maxCandidatePages?: number;
+            maxCandidateRecords?: number;
+            maxStreams?: number;
+            maxArchitectureSlots?: number;
+            maxImages?: number;
+            maxPeriodsPerImage?: number;
+            maxSnapshotBytes?: number;
+            expectedArchitectures?: {
+              [repositoryId: string]: {
+                [streamTag: string]: string[];
+              };
+            };
+          };
         };
       };
     };

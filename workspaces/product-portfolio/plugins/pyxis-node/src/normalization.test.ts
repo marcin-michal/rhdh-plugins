@@ -257,6 +257,15 @@ describe('configuration configuration', () => {
       absenceDeletion: 'retain',
       paused: false,
       vendorPolicy: 'redhat-only',
+      chi: {
+        enabled: true,
+        refreshIntervalSeconds: 900,
+        retryIntervalSeconds: 120,
+        staleAfterSeconds: 3600,
+        readTimeoutSeconds: 300,
+        maxCandidateRecords: 100000,
+        expectedArchitectures: {},
+      },
     });
     expect(result.providers.secondary.vendorPolicy).toBe('redhat-or-unlabeled');
     expect(result.sources.internal).not.toHaveProperty('vendorPolicy');
@@ -323,6 +332,51 @@ describe('configuration configuration', () => {
         ),
       ).toThrow('configuration');
     }
+  });
+
+  it.each([
+    { retryIntervalSeconds: 901 },
+    { staleAfterSeconds: 899 },
+    { maxImages: 9, maxArchitectureSlots: 8 },
+    { maxSnapshotBytes: 100 },
+    {
+      expectedArchitectures: {
+        notAnObjectId: { '9.4': ['amd64'] },
+      },
+    },
+    {
+      expectedArchitectures: {
+        '200000000000000000000001': { '*': ['amd64'] },
+      },
+    },
+    {
+      expectedArchitectures: {
+        '200000000000000000000001': { '9.4': ['amd64', 'amd64'] },
+      },
+    },
+  ])('rejects invalid CHI configuration %#', chi => {
+    expect(() =>
+      readPyxisConfig(
+        new ConfigReader({
+          pyxis: { sources: { internal: source } },
+          catalog: { providers: { pyxis: { internal: { chi } } } },
+        }),
+      ),
+    ).toThrow('provider-configuration');
+  });
+
+  it('rejects enabled CHI when catalog processing is disabled', () => {
+    expect(() =>
+      readPyxisConfig(
+        new ConfigReader({
+          pyxis: { sources: { internal: source } },
+          catalog: {
+            processingInterval: false,
+            providers: { pyxis: { internal: {} } },
+          },
+        }),
+      ),
+    ).toThrow('requires-catalog-processing');
   });
 });
 

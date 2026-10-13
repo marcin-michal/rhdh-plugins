@@ -20,6 +20,44 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 mkdirSync('coverage', { recursive: true });
 const sourceHash = sourceState();
+const callerArgs = process.argv.slice(2);
+const explicitRunInBand = callerArgs.includes('--runInBand');
+const explicitWorkers = callerArgs.some(
+  (value, index) =>
+    value.startsWith('--maxWorkers=') ||
+    (value === '--maxWorkers' && callerArgs[index + 1] !== undefined),
+);
+assert(
+  !(explicitRunInBand && explicitWorkers),
+  'Use either --runInBand or --maxWorkers, not both',
+);
+const valueOptions = new Set([
+  '--maxWorkers',
+  '--testPathPatterns',
+  '--testNamePattern',
+  '--reporters',
+  '--outputFile',
+]);
+let consumesValue = false;
+const hasScope = callerArgs.some(value => {
+  if (consumesValue) {
+    consumesValue = false;
+    return false;
+  }
+  if (valueOptions.has(value)) {
+    consumesValue = true;
+    return false;
+  }
+  return !value.startsWith('-');
+});
+const executionMode =
+  explicitWorkers || explicitRunInBand ? [] : ['--runInBand'];
+const scope = hasScope
+  ? []
+  : [
+      '--testPathPatterns',
+      'plugins/(product-portfolio-common|pyxis-common|pyxis-node|catalog-backend-module-pyxis)/',
+    ];
 const run = (program, args) => {
   const result = spawnSync(program, args, {
     stdio: 'inherit',
@@ -36,13 +74,14 @@ run('yarn', [
   'test',
   '--ci',
   '--watch=false',
-  '--runInBand',
+  ...executionMode,
+  ...callerArgs,
+  ...scope,
   '--coverage',
   '--json',
   '--outputFile=coverage/test-results.json',
   '--reporters=default',
   '--reporters=jest-junit',
-  ...process.argv.slice(2),
 ]);
 run(process.execPath, ['scripts/check-coverage.mjs']);
 run(process.execPath, ['scripts/check-acceptance.mjs']);

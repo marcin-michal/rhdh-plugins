@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+/** @public */
 export interface SourceKey<K extends string = string> {
   sourceInstance: string;
   kind: K;
   id: string;
 }
 
+/** @public */
 export interface Diagnostic {
   code: string;
   count?: number;
@@ -43,6 +45,7 @@ export interface ReadMetadata {
   };
 }
 
+/** @public */
 export type ReadEnvelope<T> = ReadMetadata &
   (
     | { state: 'complete'; data: T }
@@ -50,6 +53,7 @@ export type ReadEnvelope<T> = ReadMetadata &
     | { state: 'unavailable'; diagnostics: readonly Diagnostic[] }
   );
 
+/** @public */
 export interface CatalogBinding {
   source: SourceKey;
   entityRef?: string;
@@ -58,6 +62,7 @@ export interface CatalogBinding {
   status: 'projected' | 'unresolved-owner' | 'invalid-source' | 'conflict';
 }
 
+/** @public */
 export interface Association {
   target: SourceKey<'repository'>;
   entityRef?: string;
@@ -74,6 +79,7 @@ export interface Association {
     | 'projection-unresolved';
 }
 
+/** @public */
 export interface AssociationSet {
   subject: SourceKey;
   authority: string;

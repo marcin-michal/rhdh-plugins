@@ -28,3 +28,5 @@ export {
 export * from './client';
 export * from './inventory';
 export * from './identity';
+export * from './chiReader';
+export { countChiImages, hashChiSnapshotEvidence } from './chiNormalization';

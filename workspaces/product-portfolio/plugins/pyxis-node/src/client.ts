@@ -27,10 +27,15 @@ import type {
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import type { PyxisSourceConfig } from './config';
 import type {
+  ChiCandidate,
+  ChiCandidatePage,
   Lookup,
   PageRequest,
+  PyxisChiReadClient,
   PyxisReadClient,
   ReadOptions,
+  RepositoryChiContext,
+  SelectedImageChi,
   SourcePage,
   TeamPageRequest,
 } from './ports';
@@ -121,11 +126,81 @@ const pageSchema = z.object({
   data: z.array(z.unknown()),
 });
 
+const nullableDate = z
+  .string()
+  .nullable()
+  .optional()
+  .transform(value => value ?? null);
+const chiContextSchema = z.object({
+  _id: z.string().refine(isObjectId).transform(canonicalId),
+  registry: z.string().min(1).max(2048),
+  repository: z.string().min(1).max(2048),
+  vendor_label: z.string().nullable().optional(),
+  published: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+  last_update_date: nullableDate,
+  freshness_grades_unknown_until_date: nullableDate,
+  content_stream_tags: z
+    .array(z.string().min(1).max(256))
+    .nullable()
+    .optional(),
+  includes_multiple_content_streams: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+});
+const chiTagSchema = z.object({
+  name: z.string().min(1).max(256),
+  added_date: nullableDate,
+  removed_date: nullableDate,
+});
+const chiAssociationSchema = z.object({
+  registry: z.string().min(1).max(2048),
+  repository: z.string().min(1).max(2048),
+  published: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+  push_date: nullableDate,
+  tags: z.array(chiTagSchema).max(1024),
+});
+const chiCandidateSchema = z.object({
+  _id: z.string().refine(isObjectId).transform(canonicalId),
+  architecture: z
+    .string()
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+  deleted: z
+    .boolean()
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+  repositories: z.array(chiAssociationSchema).max(128),
+});
+const selectedImageSchema = chiCandidateSchema.extend({
+  freshness_grades: z.unknown().optional(),
+});
+const chiPageSchema = z.object({
+  page: z.literal(0),
+  page_size: z.number().int().min(1).max(500),
+  data: z.array(chiCandidateSchema),
+});
+
+const REPOSITORY_CHI_CONTEXT_QUERY = `query RepositoryChiContext($id: ObjectIDFilterScalar!) { get_repository(id: $id) { error { status detail } data { _id registry repository vendor_label published last_update_date freshness_grades_unknown_until_date content_stream_tags includes_multiple_content_streams } } }`;
+const REPOSITORY_CHI_CANDIDATES_QUERY = `query RepositoryChiCandidates($registry: String!, $repository: String!, $filter: ContainerImageFilter, $pageSize: Int!) { find_repository_images_by_registry_path(registry: $registry, repository: $repository, filter: $filter, page: 0, page_size: $pageSize, sort_by: [{ field: "_id", order: ASC }]) { error { status detail } page page_size data { _id architecture deleted repositories { registry repository published push_date tags { name added_date removed_date } } } } }`;
+const SELECTED_IMAGE_CHI_QUERY = `query SelectedImageChi($id: ObjectIDFilterScalar!, $includeGrades: Boolean!) { get_image(id: $id) { error { status detail } data { _id architecture deleted repositories { registry repository published push_date tags { name added_date removed_date } } freshness_grades @include(if: $includeGrades) { grade start_date end_date creation_date } } } }`;
+
 const transient = (status: number) =>
   status === 429 || [500, 502, 503, 504].includes(status);
 
 /** Read-only client with bounded transport, retries, and mTLS verification. @public */
-export class PyxisClient implements PyxisReadClient {
+export class PyxisClient implements PyxisReadClient, PyxisChiReadClient {
   private readonly shutdown = new AbortController();
   private closing?: Promise<void>;
   private active = 0;
@@ -222,6 +297,16 @@ export class PyxisClient implements PyxisReadClient {
     const query = many
       ? `query Inventory($page: Int!, $pageSize: Int!, $filter: ${d.filter}) { ${operation}(page: $page, page_size: $pageSize, filter: $filter, sort_by: [{field: "_id", order: ASC}]) { error { status detail } page page_size total data { ${d.projection} } } }`
       : `query Lookup($id: ObjectIDFilterScalar!) { ${operation}(id: $id) { error { status detail } data { ${d.projection} } } }`;
+    return this.executeGraphql(operation, query, variables, options, !many);
+  }
+
+  private async executeGraphql(
+    operation: string,
+    query: string,
+    variables: Record<string, unknown>,
+    options: ReadOptions,
+    allowNotFound: boolean,
+  ): Promise<Record<string, unknown>> {
     const deadline =
       options.deadline ??
       Date.now() +
@@ -323,7 +408,7 @@ export class PyxisClient implements PyxisReadClient {
           }
           if (result.data.error) {
             if (
-              !many &&
+              allowNotFound &&
               result.data.error.status === 404 &&
               result.data.data === null
             ) {
@@ -482,6 +567,156 @@ export class PyxisClient implements PyxisReadClient {
 
   getTeam(id: string, options: ReadOptions): Promise<Lookup<SourceTeam>> {
     return this.lookup('team', id, options);
+  }
+
+  async getRepositoryChiContext(
+    id: string,
+    options: ReadOptions,
+  ): Promise<Lookup<RepositoryChiContext>> {
+    if (!isObjectId(id)) {
+      throw new PyxisReadError('validation');
+    }
+
+    const response = await this.executeGraphql(
+      'get_repository',
+      REPOSITORY_CHI_CONTEXT_QUERY,
+      { id: canonicalId(id) },
+      options,
+      true,
+    );
+    if (response.notFound) {
+      return { state: 'not-found', authority: 'internal-source-404' };
+    }
+
+    const raw = response.data;
+    const parsed = chiContextSchema.safeParse(raw);
+
+    if (!parsed.success || parsed.data._id !== canonicalId(id)) {
+      throw new PyxisReadError('validation');
+    }
+
+    const tags = parsed.data.content_stream_tags;
+
+    return {
+      state: 'found',
+      data: {
+        id: parsed.data._id,
+        registry: parsed.data.registry,
+        repository: parsed.data.repository,
+        vendor: {
+          wirePresence:
+            raw && typeof raw === 'object' && Object.hasOwn(raw, 'vendor_label')
+              ? 'present'
+              : 'missing',
+          ...(Object.hasOwn(parsed.data, 'vendor_label')
+            ? { wireValue: parsed.data.vendor_label as string | null }
+            : {}),
+        },
+        published: parsed.data.published,
+        hiddenUntil: parsed.data.freshness_grades_unknown_until_date,
+        sourceUpdatedAt: parsed.data.last_update_date,
+        contentStreamTags: tags ? [...tags] : null,
+        includesMultipleContentStreams:
+          parsed.data.includes_multiple_content_streams,
+      },
+    };
+  }
+
+  async listRepositoryChiCandidates(
+    input: ReadOptions & {
+      registry: string;
+      repository: string;
+      streams: readonly string[];
+      afterId?: string;
+      pageSize: number;
+    },
+  ): Promise<ChiCandidatePage> {
+    if (
+      input.pageSize < 1 ||
+      input.pageSize > 500 ||
+      input.streams.length === 0 ||
+      input.streams.some(stream => !stream || stream.length > 256) ||
+      (input.afterId !== undefined && !isObjectId(input.afterId))
+    ) {
+      throw new PyxisReadError('validation');
+    }
+
+    const and: unknown[] = [
+      { deleted: { ne: true } },
+      {
+        repositories_elemMatch: {
+          and: [
+            { registry: { eq: input.registry } },
+            { repository: { eq: input.repository } },
+            { published: { eq: true } },
+            {
+              tags_elemMatch: {
+                and: [
+                  { name: { in: [...input.streams] } },
+                  { removed_date: { eq: null } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    if (input.afterId) {
+      and.push({ _id: { gt: canonicalId(input.afterId) } });
+    }
+
+    const response = await this.executeGraphql(
+      'find_repository_images_by_registry_path',
+      REPOSITORY_CHI_CANDIDATES_QUERY,
+      {
+        registry: input.registry,
+        repository: input.repository,
+        filter: { and },
+        pageSize: input.pageSize,
+      },
+      input,
+      false,
+    );
+
+    const parsed = chiPageSchema.safeParse(response);
+    if (!parsed.success) {
+      throw new PyxisReadError('validation');
+    }
+
+    return {
+      data: parsed.data.data as ChiCandidate[],
+      page: 0,
+      pageSize: parsed.data.page_size,
+    };
+  }
+
+  async getSelectedImageChi(
+    id: string,
+    options: ReadOptions & { includeGrades: boolean },
+  ): Promise<Lookup<SelectedImageChi>> {
+    if (!isObjectId(id)) {
+      throw new PyxisReadError('validation');
+    }
+
+    const response = await this.executeGraphql(
+      'get_image',
+      SELECTED_IMAGE_CHI_QUERY,
+      { id: canonicalId(id), includeGrades: options.includeGrades },
+      options,
+      true,
+    );
+
+    if (response.notFound) {
+      return { state: 'not-found', authority: 'internal-source-404' };
+    }
+
+    const parsed = selectedImageSchema.safeParse(response.data);
+    if (!parsed.success || parsed.data._id !== canonicalId(id)) {
+      throw new PyxisReadError('validation');
+    }
+
+    return { state: 'found', data: parsed.data as SelectedImageChi };
   }
 }
 

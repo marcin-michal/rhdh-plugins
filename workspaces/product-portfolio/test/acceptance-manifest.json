@@ -146,6 +146,199 @@
         "entity-validity configurable-vendor-admission-policy",
         "processed-catalog-graph preservation-recovery.*restart with redhat-or-unlabeled"
       ]
+    },
+    {
+      "id": "T01-chi-eligibility-catalog-invariants",
+      "jobs": ["unit"],
+      "tests": ["entity-validity"]
+    },
+    {
+      "id": "T02-chi-source-contract",
+      "jobs": ["unit"],
+      "tests": ["chi-source-contract"]
+    },
+    {
+      "id": "T03-chi-winning-identity-counting",
+      "jobs": ["unit"],
+      "tests": ["chi-latest-selection", "chi counts"]
+    },
+    {
+      "id": "T04-chi-attention",
+      "jobs": ["unit"],
+      "tests": ["chi period normalization and attention"]
+    },
+    {
+      "id": "T05-chi-scheduled-deterioration",
+      "jobs": ["unit"],
+      "tests": ["recognizes a contiguous deterioration"]
+    },
+    {
+      "id": "T06-chi-half-open-periods",
+      "jobs": ["unit"],
+      "tests": ["uses half-open periods"]
+    },
+    {
+      "id": "T07-chi-hiding",
+      "jobs": ["unit"],
+      "tests": ["masks raw schedules", "omits grade reads"]
+    },
+    {
+      "id": "T08-chi-v2-serialization",
+      "jobs": ["unit"],
+      "tests": ["publishes a complete snapshot"]
+    },
+    {
+      "id": "T09-chi-mandatory-latest-population",
+      "jobs": ["unit"],
+      "tests": ["selects the latest image without grade fallback"]
+    },
+    {
+      "id": "T10-chi-listing-aggregation",
+      "jobs": ["unit"],
+      "tests": ["chi listing aggregation and freshness"]
+    },
+    {
+      "id": "T11-chi-dynamic-freshness",
+      "jobs": ["unit"],
+      "tests": ["evaluates staleness from selectionAt"]
+    },
+    {
+      "id": "T12-chi-cache-replacement",
+      "jobs": ["unit"],
+      "tests": ["chi-cache chi-preservation"]
+    },
+    {
+      "id": "T13-chi-limits",
+      "jobs": ["unit"],
+      "tests": ["rejects invalid CHI configuration"]
+    },
+    {
+      "id": "T14-chi-retry-cancellation-concurrency",
+      "jobs": ["unit"],
+      "tests": ["retry-cancellation"]
+    },
+    {
+      "id": "T15-chi-context-winner-revalidation",
+      "jobs": ["unit"],
+      "tests": ["chi-winner-revalidation"]
+    },
+    {
+      "id": "T16-chi-independent-refresh",
+      "jobs": ["unit", "database"],
+      "tests": ["preservation-recovery"]
+    },
+    {
+      "id": "T17-chi-restart-cache-persistence",
+      "jobs": ["database"],
+      "tests": ["processed-catalog-graph preservation-recovery"]
+    },
+    {
+      "id": "T18-chi-multi-source-replica",
+      "jobs": ["database"],
+      "tests": ["scheduling-database-behavior"]
+    },
+    {
+      "id": "T19-chi-disable-cache-recovery",
+      "jobs": ["unit"],
+      "tests": ["clears recoverable evidence when CHI is disabled"]
+    },
+    {
+      "id": "T20-chi-deletion-boundary",
+      "jobs": ["database"],
+      "tests": ["preservation-recovery"]
+    },
+    {
+      "id": "T21-chi-future-observer-contract",
+      "jobs": ["unit"],
+      "tests": ["chi listing aggregation and freshness"]
+    },
+    {
+      "id": "T22-chi-configuration-validation",
+      "jobs": ["unit"],
+      "tests": ["configuration"]
+    },
+    {
+      "id": "T23-chi-auth-confidentiality",
+      "jobs": ["unit"],
+      "tests": ["actual-tls"]
+    },
+    {
+      "id": "T24-chi-operational-evidence",
+      "jobs": ["unit"],
+      "tests": ["observability"]
+    },
+    {
+      "id": "T25-chi-api-export-compatibility",
+      "jobs": ["export"],
+      "tests": ["export-contents"]
+    },
+    {
+      "id": "T26-chi-acceptance-gate-integrity",
+      "jobs": ["unit"],
+      "tests": ["chi-source-contract"]
+    },
+    {
+      "id": "T27-chi-exact-host-isolation",
+      "jobs": ["installation"],
+      "tests": ["exact RHDH installer"]
+    },
+    {
+      "id": "T28-chi-host-restart-rollback",
+      "jobs": ["installation"],
+      "tests": ["exact RHDH installer"]
+    },
+    {
+      "id": "T29-chi-oci-load-budgets",
+      "jobs": ["installation"],
+      "tests": ["exact RHDH installer"]
+    },
+    {
+      "id": "T30-chi-stream-policy",
+      "jobs": ["unit"],
+      "tests": ["marked latest fallback", "unconfigured multi-stream context"]
+    },
+    {
+      "id": "T31-chi-same-association-ranking",
+      "jobs": ["unit"],
+      "tests": ["does not rank by unrelated repository association timestamps"]
+    },
+    {
+      "id": "T32-chi-selection-uncertainty",
+      "jobs": ["unit"],
+      "tests": ["equal maxima uncertain", "poisons ranking"]
+    },
+    {
+      "id": "T33-chi-unknown-grade-latest",
+      "jobs": ["unit"],
+      "tests": ["selects the latest image without grade fallback"]
+    },
+    {
+      "id": "T34-chi-multiarch-expectations",
+      "jobs": ["unit"],
+      "tests": [
+        "missing expected architectures",
+        "complete architecture coverage"
+      ]
+    },
+    {
+      "id": "T35-chi-candidate-keyset",
+      "jobs": ["unit"],
+      "tests": ["chi-candidate-keyset"]
+    },
+    {
+      "id": "T36-chi-winner-dedup-revalidation",
+      "jobs": ["unit"],
+      "tests": ["chi-winner-revalidation"]
+    },
+    {
+      "id": "T37-chi-cache-v1-incompatibility",
+      "jobs": ["unit"],
+      "tests": ["discards incompatible cache versions"]
+    },
+    {
+      "id": "T38-chi-bounded-truthful-empty",
+      "jobs": ["unit"],
+      "tests": ["marked latest fallback", "unconfigured multi-stream context"]
     }
   ]
 }

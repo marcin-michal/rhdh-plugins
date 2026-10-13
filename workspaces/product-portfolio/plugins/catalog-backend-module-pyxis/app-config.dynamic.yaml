@@ -13,6 +13,20 @@ catalog:
         paused: false
         vendorPolicy: redhat-only
         absenceDeletion: retain
+        chi:
+          enabled: true
+          refreshIntervalSeconds: 900
+          retryIntervalSeconds: 120
+          staleAfterSeconds: 3600
+          readTimeoutSeconds: 300
+          maxCandidatePages: 1000
+          maxCandidateRecords: 100000
+          maxStreams: 128
+          maxArchitectureSlots: 1024
+          maxImages: 1024
+          maxPeriodsPerImage: 32
+          maxSnapshotBytes: 524288
+          expectedArchitectures: {}
         schedule:
           frequencySeconds: 3600
           timeoutSeconds: 600

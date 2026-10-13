@@ -4,17 +4,21 @@ Read-only Pyxis inventory ingestion for RHDH 1.10.3 / Backstage 1.49.4. The
 workspace contains four private packages and a local catalog backend harness:
 
 - `product-portfolio-common`: neutral source identities, read envelopes and associations.
-- `pyxis-common`: source projections, admission, roster and host-binding contracts.
+- `pyxis-common`: source projections, admission, roster, host-binding and repository
+  CHI snapshot contracts.
 - `pyxis-node`: verified mTLS transport, validated GraphQL reads, bounded pagination,
-  normalization and the restricted inventory port.
+  normalization, latest-image CHI selection and restricted read ports.
 - `catalog-backend-module-pyxis`: catalog provider, relationship processor, guarded
-  reconciliation, scheduling and host OpenTelemetry instrumentation.
+  reconciliation, cache-backed CHI enrichment, scheduling and host OpenTelemetry
+  instrumentation.
 
 The module imports source listings and repositories as Resources, teams as Groups,
 and member references as isolated Users in the `pyxis` namespace. Repository
 ownership comes from one `team_id`. Only direct listing repository IDs establish
-`pyxisHasRepository` / `pyxisRepositoryOf` relationships. This slice has no Product
-System, image inventory, CHI evaluation, email, Konflux, frontend or MCP runtime.
+`pyxisHasRepository` / `pyxisRepositoryOf` relationships. Repository Resources are
+enriched with bounded `spec.pyxisChi` observations for the latest published image
+per configured stream and observed/expected architecture. This slice has no Product
+System, image catalog entities, email, Konflux, frontend or MCP runtime.
 
 Provider `vendorPolicy` defaults to `redhat-only`: only exact `redhat` records
 qualify. Set `redhat-or-unlabeled` to also admit null or missing labels. Malformed
@@ -26,12 +30,12 @@ updates use deltas; scan absence and unpublished records never imply deletion.
 
 ## Development
 
-Use Node 22 or 24 and repository Yarn 4.17.1. Target export and installation
+Use Node 22 or 24 and repository Yarn 4.18.1. Target export and installation
 acceptance use Node 24. Initial dependency versions and shared framework
 resolutions are pinned; the lockfile is authoritative.
 
 ```sh
-yarn install --immutable
+YARN_ENABLE_SCRIPTS=false yarn install --immutable
 yarn fix --check
 yarn tsc:full
 yarn lint:all --max-warnings 0
@@ -54,6 +58,7 @@ when explicitly requested through `PYXIS_INSTALL_REPOSITORY_ROOT=true`.
 - [Configuration, identity and operational runbook](docs/operations.md)
 - [Dynamic OCI export, exact-host smoke and DevHub handoff](docs/delivery.md)
 - [Public ports and later consumer contracts](docs/contracts.md)
+- [Repository CHI snapshot behavior](docs/chi-snapshots.md)
 
 Unit, transport, real TLS and real catalog tests are runnable locally. Database
 acceptance also requires PostgreSQL 16; exact-host installation requires the

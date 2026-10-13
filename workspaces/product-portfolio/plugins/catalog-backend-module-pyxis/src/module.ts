@@ -21,9 +21,11 @@ import {
 import { catalogProcessingExtensionPoint } from '@backstage/plugin-catalog-node';
 import {
   PyxisClient,
+  RepositoryChiReader,
   readPyxisConfig,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-node';
 import { CatalogInventory } from './catalogInventory';
+import { PyxisChiProcessor, type PyxisChiRuntime } from './chiProcessor';
 import { PyxisProvider } from './provider';
 import { PyxisRelationshipProcessor } from './processor';
 
@@ -53,9 +55,16 @@ export const catalogModulePyxis = createBackendModule({
       }) {
         const settings = readPyxisConfig(config);
         const providers: PyxisProvider[] = [];
+        const clients: PyxisClient[] = [];
+        const chiRuntimes: Record<string, PyxisChiRuntime> = {};
+        const shutdown = new AbortController();
 
         lifecycle.addShutdownHook(async () => {
-          await Promise.all(providers.map(provider => provider.close()));
+          shutdown.abort();
+          await Promise.all([
+            ...providers.map(provider => provider.close()),
+            ...clients.map(client => client.close()),
+          ]);
         });
 
         try {
@@ -67,6 +76,19 @@ export const catalogModulePyxis = createBackendModule({
               sourceConfig,
               sourceInstance,
             );
+            clients.push(client);
+
+            chiRuntimes[sourceInstance] = {
+              reader: new RepositoryChiReader(
+                sourceInstance,
+                client,
+                sourceConfig,
+                providerConfig.chi,
+                providerConfig.vendorPolicy,
+              ),
+              chi: providerConfig.chi,
+              provider: providerConfig,
+            };
 
             providers.push(
               new PyxisProvider(
@@ -81,12 +103,19 @@ export const catalogModulePyxis = createBackendModule({
             );
           }
         } catch (error) {
-          await Promise.all(providers.map(provider => provider.close()));
+          shutdown.abort();
+          await Promise.all([
+            ...providers.map(provider => provider.close()),
+            ...clients.map(client => client.close()),
+          ]);
           throw error;
         }
 
         catalog.addEntityProvider(...providers);
         catalog.addProcessor(new PyxisRelationshipProcessor());
+        catalog.addProcessor(
+          new PyxisChiProcessor(chiRuntimes, shutdown.signal),
+        );
       },
     });
   },

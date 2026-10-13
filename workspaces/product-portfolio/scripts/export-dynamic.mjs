@@ -15,7 +15,7 @@
  */
 
 import { sourceState } from './source-state.mjs';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -37,6 +37,21 @@ const result = spawnSync(
 
 if (result.status !== 0) {
   process.exit(result.status ?? 1);
+}
+
+const zodSourceDirectory = resolve(
+  'plugins/catalog-backend-module-pyxis/dist-dynamic/node_modules/zod/src',
+);
+for (const testDirectory of [
+  'v3/tests',
+  'v4/classic/tests',
+  'v4/core/tests',
+  'v4/mini/tests',
+]) {
+  rmSync(resolve(zodSourceDirectory, testDirectory), {
+    recursive: true,
+    force: true,
+  });
 }
 
 assert.equal(sourceState(), sourceHash, 'Source changed during export');

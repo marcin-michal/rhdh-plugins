@@ -54,6 +54,7 @@ type ScanStage =
 
 const MAX_DIAGNOSTIC_DURATION_MS = 86_400_000;
 
+/** Complete guarded inventory traversal for one source instance. @public */
 export class PyxisInventoryReader implements PyxisInventoryReadPort {
   constructor(
     private readonly sourceInstance: string,

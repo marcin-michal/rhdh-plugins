@@ -157,7 +157,6 @@ export class PyxisProvider implements EntityProvider {
 
   async close(): Promise<void> {
     this.shutdown.abort();
-    await this.client.close();
     await this.running;
   }
 

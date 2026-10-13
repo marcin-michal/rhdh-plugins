@@ -8,6 +8,215 @@ import type { CatalogBinding } from '@red-hat-developer-hub/backstage-plugin-pro
 import type { ReadMetadata } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 import type { SourceKey } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 
+// @public
+export function aggregateRepositoryChi(
+  values: readonly ChiAggregateInput[],
+  now: number,
+): ChiAggregate;
+
+// @public
+export interface ChiAggregate {
+  // (undocumented)
+  complete: boolean;
+  // (undocumented)
+  countingUnit: 'selected-repository-image-occurrences';
+  // (undocumented)
+  counts: ChiCounts;
+  // (undocumented)
+  oldestObservationAt: string | null;
+  // (undocumented)
+  repositories: {
+    total: number;
+    ready: number;
+    partial: number;
+    empty: number;
+    hidden: number;
+    unavailable: number;
+    disabled: number;
+    stale: number;
+    refreshFailed: number;
+    transitionDue: number;
+    architectureCoverageUnverified: number;
+  };
+  // (undocumented)
+  schemaVersion: '2';
+  // (undocumented)
+  streams: {
+    total: number;
+    incomplete: number;
+    missingArchitectureSlots: number;
+  };
+}
+
+// @public
+export interface ChiAggregateInput {
+  // (undocumented)
+  projection: RepositoryChiProjection | null;
+  // (undocumented)
+  repositoryRef: string;
+}
+
+// @public
+export type ChiAttention = 'ok' | 'warning' | 'problem' | 'unknown';
+
+// @public
+export interface ChiCounts {
+  // (undocumented)
+  aWithScheduledDrop: number;
+  // (undocumented)
+  byAttention: Record<ChiAttention, number>;
+  // (undocumented)
+  byGrade: Record<ChiGrade, number> & {
+    unknown: number;
+  };
+  // (undocumented)
+  total: number;
+}
+
+// @public
+export interface ChiDrop {
+  // (undocumented)
+  at: string;
+  // (undocumented)
+  from: ChiGrade;
+  // (undocumented)
+  to: ChiGrade;
+}
+
+// @public
+export type ChiFailureCode =
+  | 'authorization'
+  | 'transport'
+  | 'timeout'
+  | 'cancelled'
+  | 'graphql'
+  | 'source'
+  | 'source-not-found'
+  | 'validation'
+  | 'context-changed'
+  | 'selection-changed'
+  | 'source-ineligible'
+  | 'pagination'
+  | 'limit'
+  | 'cache-invalid';
+
+// @public
+export type ChiGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+
+// @public
+export interface ChiImageObservation {
+  // (undocumented)
+  architecture: string;
+  // (undocumented)
+  attention: ChiAttention;
+  // (undocumented)
+  currentGrade: ChiGrade | null;
+  // (undocumented)
+  futureDrops: readonly ChiDrop[];
+  // (undocumented)
+  gradeOrigin: 'normalized-source-periods';
+  // (undocumented)
+  gradeQuality: 'known' | 'unknown' | 'inconsistent' | 'hidden';
+  // (undocumented)
+  imageId: string;
+  // (undocumented)
+  periodEvidence: 'valid' | 'absent' | 'inconsistent' | 'hidden';
+  // (undocumented)
+  periods: readonly ChiPeriod[];
+  // (undocumented)
+  pushDates: Readonly<Record<string, string>>;
+  // (undocumented)
+  selectedIn: readonly string[];
+}
+
+// @public
+export interface ChiPeriod {
+  // (undocumented)
+  createdAt: string | null;
+  // (undocumented)
+  endAt: string | null;
+  // (undocumented)
+  grade: ChiGrade;
+  // (undocumented)
+  startAt: string;
+}
+
+// @public
+export type ChiPopulation = 'latest-published-per-stream-architecture';
+
+// @public
+export type ChiSelectionIssue =
+  | 'streams-not-configured'
+  | 'no-published-candidate'
+  | 'missing-expected-architecture'
+  | 'invalid-architecture'
+  | 'invalid-push-date'
+  | 'invalid-tag-date'
+  | 'conflicting-association'
+  | 'tied-latest';
+
+// @public
+export interface ChiSnapshotQuality {
+  // (undocumented)
+  architectureCoverageUnverified: boolean;
+  // (undocumented)
+  availability:
+    | 'known'
+    | 'partial'
+    | 'empty'
+    | 'hidden'
+    | 'unavailable'
+    | 'disabled';
+  // (undocumented)
+  refreshFailed: boolean;
+  // (undocumented)
+  selectionIncomplete: boolean;
+  // (undocumented)
+  stale: boolean;
+  // (undocumented)
+  transitionDue: boolean;
+}
+
+// @public
+export interface ChiStreamSelection {
+  // (undocumented)
+  architectures: {
+    basis: 'configured' | 'observed-only';
+    expected: readonly string[] | null;
+    observed: readonly string[];
+    missing: readonly string[];
+  };
+  // (undocumented)
+  counts: ChiCounts;
+  // (undocumented)
+  earliestDrop:
+    | (ChiDrop & {
+        imageId: string;
+        architecture: string;
+      })
+    | null;
+  // (undocumented)
+  issues: readonly ChiSelectionIssue[];
+  // (undocumented)
+  slots: readonly {
+    architecture: string;
+    state: 'selected' | 'missing' | 'uncertain';
+    imageId: string | null;
+    pushDate: string | null;
+    reason: ChiSelectionIssue | null;
+  }[];
+  // (undocumented)
+  tag: string;
+  // (undocumented)
+  worstKnownGrade: ChiGrade | null;
+}
+
+// @public
+export function getRepositoryChiQuality(
+  value: RepositoryChiProjection,
+  now: number,
+): ChiSnapshotQuality;
+
 // @public (undocumented)
 export interface HostIdentityBinding {
   // (undocumented)
@@ -92,6 +301,91 @@ export interface PyxisProjection {
   vendor?: VendorEvidence;
   // (undocumented)
   version: '1';
+}
+
+// @public
+export interface RepositoryChiProjection {
+  // (undocumented)
+  enabled: boolean;
+  // (undocumented)
+  lastAttempt: {
+    at: string;
+    outcome: 'complete' | 'failed';
+    code?: ChiFailureCode;
+  } | null;
+  // (undocumented)
+  schemaVersion: '2';
+  // (undocumented)
+  snapshot: RepositoryChiSnapshot | null;
+  // (undocumented)
+  staleAfterSeconds: number;
+  // (undocumented)
+  state: 'ready' | 'partial' | 'empty' | 'hidden' | 'unavailable' | 'disabled';
+  // (undocumented)
+  suppression: {
+    hiddenUntil: string;
+    observedAt: string;
+  } | null;
+}
+
+// @public
+export interface RepositoryChiSnapshot {
+  // (undocumented)
+  contentHash: string;
+  // (undocumented)
+  contextCheckedAt: string;
+  // (undocumented)
+  counts: ChiCounts;
+  // (undocumented)
+  coverage: {
+    fetch: 'complete';
+    atomic: false;
+    allRepositoryImages: false;
+    selection: 'complete' | 'partial';
+    architectureExpectations: 'verified' | 'unverified';
+    grades: 'complete' | 'partial' | 'hidden';
+    candidatePages: number;
+    candidateRecords: number;
+  };
+  // (undocumented)
+  hiddenUntil: string | null;
+  // (undocumented)
+  images: readonly ChiImageObservation[];
+  // (undocumented)
+  issues: readonly ChiSelectionIssue[];
+  // (undocumented)
+  locator: {
+    registry: string;
+    repository: string;
+  };
+  // (undocumented)
+  normalizationVersion: 'pyxis-chi-v2';
+  // (undocumented)
+  observedAt: string;
+  // (undocumented)
+  population: ChiPopulation;
+  // (undocumented)
+  published: boolean | null;
+  // (undocumented)
+  schemaVersion: '2';
+  // (undocumented)
+  selectionAt: string;
+  // (undocumented)
+  source: SourceKey<'repository'>;
+  // (undocumented)
+  sourceCalculationFreshness: 'unknown';
+  // (undocumented)
+  sourceUpdatedAt: string | null;
+  // (undocumented)
+  startedAt: string;
+  // (undocumented)
+  streamPolicy: {
+    tags: readonly string[];
+    origin: 'configured' | 'latest-fallback' | 'unconfigured';
+    includesMultipleContentStreams: boolean | null;
+  };
+  // (undocumented)
+  streams: readonly ChiStreamSelection[];
 }
 
 // @public

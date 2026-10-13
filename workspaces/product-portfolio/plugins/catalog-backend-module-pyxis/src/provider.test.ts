@@ -63,7 +63,7 @@ describe('module-behavior module behavior', () => {
       extensionPoints: [[catalogProcessingExtensionPoint, catalog]],
     });
     expect(catalog.addEntityProvider).toHaveBeenCalledWith();
-    expect(catalog.addProcessor).toHaveBeenCalledTimes(1);
+    expect(catalog.addProcessor).toHaveBeenCalledTimes(2);
     await backend.stop();
   });
 

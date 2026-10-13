@@ -51,6 +51,48 @@ const sourceSchema = z
   })
   .strict();
 
+const architectureSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/);
+const expectedArchitecturesSchema = z
+  .record(
+    z.string().regex(/^[a-fA-F0-9]{24}$/),
+    z.record(
+      z
+        .string()
+        .min(1)
+        .max(256)
+        .refine(value => !/[?*]/.test(value)),
+      z
+        .array(architectureSchema)
+        .min(1)
+        .max(32)
+        .refine(value => new Set(value).size === value.length),
+    ),
+  )
+  .default({});
+
+const chiSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    refreshIntervalSeconds: z.number().int().min(60).max(86400).default(900),
+    retryIntervalSeconds: z.number().int().min(30).max(3600).default(120),
+    staleAfterSeconds: z.number().int().min(60).max(604800).default(3600),
+    readTimeoutSeconds: z.number().int().min(1).max(600).default(300),
+    maxCandidatePages: z.number().int().min(1).max(10000).default(1000),
+    maxCandidateRecords: z.number().int().min(1).max(1000000).default(100000),
+    maxStreams: z.number().int().min(1).max(1024).default(128),
+    maxArchitectureSlots: z.number().int().min(1).max(8192).default(1024),
+    maxImages: z.number().int().min(1).max(8192).default(1024),
+    maxPeriodsPerImage: z.number().int().min(1).max(128).default(32),
+    maxSnapshotBytes: z.number().int().min(16384).max(1048576).default(524288),
+    expectedArchitectures: expectedArchitecturesSchema,
+  })
+  .strict()
+  .refine(value => value.retryIntervalSeconds <= value.refreshIntervalSeconds)
+  .refine(value => value.staleAfterSeconds >= value.refreshIntervalSeconds)
+  .refine(value => value.maxImages <= value.maxArchitectureSlots);
+
 const providerSchema = z
   .object({
     namespace: z.literal('pyxis').default('pyxis'),
@@ -70,6 +112,7 @@ const providerSchema = z
       })
       .strict()
       .default({}),
+    chi: chiSchema.default({}),
   })
   .strict()
   .refine(
@@ -104,6 +147,24 @@ export interface PyxisProviderConfig {
     timeoutSeconds: number;
     initialDelaySeconds: number;
   };
+  chi: PyxisChiConfig;
+}
+
+/** Validated repository CHI controls for one source instance. @public */
+export interface PyxisChiConfig {
+  enabled: boolean;
+  refreshIntervalSeconds: number;
+  retryIntervalSeconds: number;
+  staleAfterSeconds: number;
+  readTimeoutSeconds: number;
+  maxCandidatePages: number;
+  maxCandidateRecords: number;
+  maxStreams: number;
+  maxArchitectureSlots: number;
+  maxImages: number;
+  maxPeriodsPerImage: number;
+  maxSnapshotBytes: number;
+  expectedArchitectures: Record<string, Record<string, string[]>>;
 }
 
 /** Reusable connection configuration is separate from ingestion controls. @public */
@@ -143,6 +204,13 @@ export function readPyxisConfig(config: Config): PyxisConfiguration {
     }
 
     providers[id] = parsed.data;
+  }
+
+  if (
+    config.getOptional<unknown>('catalog.processingInterval') === false &&
+    Object.values(providers).some(provider => provider.chi.enabled)
+  ) {
+    throw new Error('pyxis-chi-requires-catalog-processing');
   }
 
   return { sources, providers };

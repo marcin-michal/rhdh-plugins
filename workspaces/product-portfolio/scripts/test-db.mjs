@@ -29,7 +29,7 @@ const result = spawnSync(
     '--runInBand',
     '--json',
     '--outputFile=release-evidence/database-tests.json',
-    'catalog.integration|scheduler.database.integration',
+    'catalog.integration|scheduler.database.integration|chiProcessor.integration|chiCache.database.integration',
   ],
   {
     stdio: 'inherit',

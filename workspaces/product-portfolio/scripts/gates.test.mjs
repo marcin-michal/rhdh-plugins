@@ -52,6 +52,45 @@ test('acceptance gate rejects missing and skipped scenarios', () => {
   );
 });
 
+test('acceptance gate rejects missing, skipped and failed CHI scenarios', () => {
+  const manifest = {
+    scenarios: [
+      {
+        id: 'T35-chi-candidate-keyset',
+        jobs: ['unit'],
+        tests: ['chi-candidate-keyset'],
+      },
+    ],
+  };
+  const assertion = {
+    fullName: 'chi-candidate-keyset exhausts pages',
+    status: 'passed',
+  };
+  const results = {
+    success: true,
+    numPendingTests: 0,
+    numFailedTests: 0,
+    testResults: [{ assertionResults: [assertion] }],
+  };
+  checkAcceptance(results, manifest);
+  assert.throws(() =>
+    checkAcceptance({ ...results, testResults: [] }, manifest),
+  );
+  assert.throws(() =>
+    checkAcceptance(
+      {
+        ...results,
+        success: false,
+        numFailedTests: 1,
+        testResults: [
+          { assertionResults: [{ ...assertion, status: 'failed' }] },
+        ],
+      },
+      manifest,
+    ),
+  );
+});
+
 test('coverage gate rejects lowered, missing and uncovered domain evidence', () => {
   const filename = 'plugins/pyxis-node/src/normalization.ts';
   const report = {
