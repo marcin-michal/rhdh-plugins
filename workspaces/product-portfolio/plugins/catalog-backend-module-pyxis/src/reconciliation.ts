@@ -15,6 +15,7 @@
  */
 
 import type { EntityProviderMutation } from '@backstage/plugin-catalog-node';
+import { isDeepStrictEqual } from 'node:util';
 import type { ReadEnvelope } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 import type {
   InventorySnapshot,
@@ -24,12 +25,34 @@ import {
   sourceRef,
   type PyxisProviderConfig,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-node';
-import { projectEntity, providerId } from './projection';
+import { parseProjection, projectEntity, providerId } from './projection';
 
 export interface ReconciliationPlan {
   mutation?: EntityProviderMutation;
   retained: number;
   projections: PyxisProjection[];
+}
+
+/** Scan timing is evidence about a read, not provider-owned entity content. */
+function providerOwnedContent(projection: PyxisProjection) {
+  const { observation: _observation, roster, ...content } = projection;
+
+  if (!roster) {
+    return content;
+  }
+
+  const { observedAt: _observedAt, ...stableRoster } = roster;
+  return { ...content, roster: stableRoster };
+}
+
+function hasSameProviderContent(
+  previous: PyxisProjection,
+  next: PyxisProjection,
+): boolean {
+  return isDeepStrictEqual(
+    providerOwnedContent(previous),
+    providerOwnedContent(next),
+  );
 }
 
 /** Incomplete required reads cannot produce any mutation. */
@@ -55,6 +78,7 @@ export function planMutation(
   const next = new Map(previous);
   const removed = new Set<string>();
   const updated = new Set<string>();
+  const addedEntities = new Map<string, ReturnType<typeof projectEntity>>();
   const observation = {
     contractVersion: scan.contractVersion,
     startedAt: scan.startedAt,
@@ -64,13 +88,31 @@ export function planMutation(
 
   const add = (p: PyxisProjection) => {
     const ref = sourceRef(p.source);
-    next.set(ref, p);
-    updated.add(ref);
+    const entity = projectEntity(p);
+    const candidate = parseProjection(entity.spec?.pyxis);
+    const previousProjection = previous.get(ref);
+
+    if (
+      previousProjection &&
+      hasSameProviderContent(previousProjection, candidate)
+    ) {
+      next.set(ref, previousProjection);
+      updated.delete(ref);
+      addedEntities.delete(ref);
+    } else {
+      next.set(ref, candidate);
+      updated.add(ref);
+      addedEntities.set(ref, entity);
+    }
+
+    removed.delete(ref);
   };
 
   const remove = (ref: string) => {
     if (previous.has(ref)) {
       next.delete(ref);
+      updated.delete(ref);
+      addedEntities.delete(ref);
       removed.add(ref);
     }
   };
@@ -200,7 +242,12 @@ export function planMutation(
     projections,
     mutation: {
       type: 'delta',
-      added: projections.map(p => ({ entity: projectEntity(p), locationKey })),
+      added: projections
+        .filter(p => updated.has(sourceRef(p.source)))
+        .map(p => ({
+          entity: addedEntities.get(sourceRef(p.source))!,
+          locationKey,
+        })),
       removed: [...removed].map(entityRef => ({ entityRef, locationKey })),
     },
   };

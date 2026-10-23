@@ -16,12 +16,16 @@
 
 import { mockServices, startTestBackend } from '@backstage/backend-test-utils';
 import { catalogProcessingExtensionPoint } from '@backstage/plugin-catalog-node';
-import type { EntityProviderConnection } from '@backstage/plugin-catalog-node';
+import type {
+  EntityProviderConnection,
+  EntityProviderMutation,
+} from '@backstage/plugin-catalog-node';
 import {
   PyxisClient,
   PyxisReadError,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-node';
 import { CatalogInventory } from './catalogInventory';
+import { ownedProjection } from './projection';
 import { PyxisProvider } from './provider';
 import { baseline, fixtureClient, settings } from './testSupport';
 import module from './index';
@@ -48,7 +52,7 @@ function harness(paused = false) {
     logger,
   );
   const connection = {
-    applyMutation: jest.fn(async () => {}),
+    applyMutation: jest.fn(async (_mutation: EntityProviderMutation) => {}),
     refresh: jest.fn(),
   } satisfies EntityProviderConnection;
 
@@ -139,6 +143,32 @@ describe('preservation-recovery preservation and recovery', () => {
     expect(h.connection.applyMutation).toHaveBeenCalledTimes(1);
     expect(h.connection.applyMutation).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'delta', added: expect.any(Array) }),
+    );
+    await h.provider.close();
+  });
+
+  it('does not submit an empty delta after an unchanged scan', async () => {
+    const h = harness();
+    await h.provider.connect(h.connection);
+    await h.provider.run();
+
+    const firstMutation = h.connection.applyMutation.mock.calls[0][0];
+    if (firstMutation.type !== 'delta') {
+      throw new Error('Expected an initial delta mutation');
+    }
+
+    const prior = firstMutation.added.map(({ entity }) =>
+      ownedProjection(entity, 'internal'),
+    );
+    jest.mocked(h.catalog.read).mockResolvedValue(prior);
+    h.connection.applyMutation.mockClear();
+
+    await h.provider.run();
+
+    expect(h.connection.applyMutation).not.toHaveBeenCalled();
+    expect(h.logger.info).toHaveBeenLastCalledWith(
+      'Pyxis catalog reconciliation completed',
+      expect.objectContaining({ added: 0, removed: 0, retained: prior.length }),
     );
     await h.provider.close();
   });

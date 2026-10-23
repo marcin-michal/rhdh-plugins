@@ -223,10 +223,21 @@ export class PyxisProvider implements EntityProvider {
         options,
       );
 
+      const added =
+        plan.mutation.type === 'delta'
+          ? plan.mutation.added.length
+          : plan.projections.length;
+      const removed =
+        plan.mutation.type === 'delta' ? plan.mutation.removed.length : 0;
+      const hasMutation =
+        plan.mutation.type !== 'delta' || added > 0 || removed > 0;
+
       checkRead(options);
-      submitted = true;
-      await this.connection!.applyMutation(plan.mutation);
-      outcome = 'submitted';
+      if (hasMutation) {
+        submitted = true;
+        await this.connection!.applyMutation(plan.mutation);
+      }
+      outcome = hasMutation ? 'submitted' : 'unchanged';
 
       this.lastSuccess.record(Date.now() / 1000, {
         sourceInstance: this.sourceInstance,
@@ -235,11 +246,11 @@ export class PyxisProvider implements EntityProvider {
         sourceInstance: this.sourceInstance,
         outcome: 'retained',
       });
-      this.counts.record(
-        plan.mutation.type === 'delta' ? plan.mutation.removed.length : 0,
-        { sourceInstance: this.sourceInstance, outcome: 'removed' },
-      );
-      this.counts.record(plan.projections.length, {
+      this.counts.record(removed, {
+        sourceInstance: this.sourceInstance,
+        outcome: 'removed',
+      });
+      this.counts.record(added, {
         sourceInstance: this.sourceInstance,
         outcome: 'submitted',
       });
@@ -326,9 +337,10 @@ export class PyxisProvider implements EntityProvider {
         }
       }
 
-      this.logger.info('Pyxis catalog delta submitted', {
+      this.logger.info('Pyxis catalog reconciliation completed', {
         sourceInstance: this.sourceInstance,
-        submitted: plan.projections.length,
+        added,
+        removed,
         retained: plan.retained,
       });
     } catch {

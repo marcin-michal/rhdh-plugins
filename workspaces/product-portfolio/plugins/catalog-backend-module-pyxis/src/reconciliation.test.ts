@@ -301,6 +301,78 @@ describe('reconciliation-guards reconciliation guards', () => {
   });
 });
 
+describe('reconciliation-delta incremental catalog mutations', () => {
+  it('retains prior projections when only scan observation metadata changes', async () => {
+    const scan = await scanFixture();
+    if (scan.state !== 'complete') {
+      throw new Error('scan failed');
+    }
+
+    const prior = planMutation('internal', [], scan, config).projections.map(
+      projection => ownedProjection(projectEntity(projection), 'internal'),
+    );
+    const later = (value: string) =>
+      new Date(Date.parse(value) + 1000).toISOString();
+    const nextScan = {
+      ...scan,
+      startedAt: later(scan.startedAt),
+      observedAt: later(scan.observedAt),
+      data: {
+        ...scan.data,
+        teams: scan.data.teams.map(team => ({
+          ...team,
+          roster: {
+            ...team.roster,
+            observedAt: later(team.roster.observedAt),
+          },
+        })),
+      },
+    };
+
+    const repeated = planMutation('internal', prior, nextScan, config);
+
+    expect(repeated.mutation).toEqual({
+      type: 'delta',
+      added: [],
+      removed: [],
+    });
+    expect(repeated.retained).toBe(prior.length);
+    expect(repeated.projections).toEqual(prior);
+  });
+
+  it('adds only projections whose provider-owned content changed', async () => {
+    const prior = (await initial()).projections.map(projection =>
+      ownedProjection(projectEntity(projection), 'internal'),
+    );
+    const data = structuredClone(baseline);
+    data.listings[0].name = 'Updated listing title';
+    const plan = planMutation(
+      'internal',
+      prior,
+      await scanFixture(fixtureClient(data)),
+      config,
+    );
+
+    if (plan.mutation?.type !== 'delta') {
+      throw new Error('no delta');
+    }
+
+    expect(
+      plan.mutation.added.map(({ entity }) =>
+        sourceRef(ownedProjection(entity, 'internal').source),
+      ),
+    ).toEqual([
+      sourceRef({
+        sourceInstance: 'internal',
+        kind: 'listing',
+        id: data.listings[0]._id,
+      }),
+    ]);
+    expect(plan.mutation.removed).toEqual([]);
+    expect(plan.retained).toBe(prior.length - 1);
+  });
+});
+
 describe('membership-removal membership removal', () => {
   it('removes complete contributions, preserves shared members and retains incomplete contributions', async () => {
     const prior = (await initial()).projections;
