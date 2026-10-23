@@ -79,14 +79,14 @@ const descriptors = {
     many: 'find_product_listings',
     filter: 'ProductListingFilter',
     projection:
-      '_id name vendor_label team_id repositories published deleted last_update_date',
+      '_id name vendor_label team_id repositories published deleted contacts { email_address type } descriptions { long short } logo { url } support { description email_address phone_number url } creation_date last_update_date',
   },
   repository: {
     single: 'get_repository',
     many: 'find_repositories',
     filter: 'ContainerRepositoryFilter',
     projection:
-      '_id vendor_label registry repository display_data { name } team_id product_listings published last_update_date',
+      '_id vendor_label registry repository display_data { name long_description short_description } team_id product_listings published last_update_date creation_date release_categories architectures documentation_links { title type url } metrics { last_update_date pulls_in_last_30_days } contacts { email_address type }',
   },
   team: {
     single: 'get_team',

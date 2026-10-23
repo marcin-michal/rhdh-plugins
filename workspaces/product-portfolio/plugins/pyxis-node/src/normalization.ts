@@ -138,10 +138,45 @@ const optionalString = z.string().nullable().optional();
 const base = { _id: id, last_update_date: date.nullable().optional() };
 const resource = {
   ...base,
+  creation_date: date.nullable().optional(),
   vendor_label: z.unknown(),
   team_id: optionalString,
   published: z.boolean().nullable().optional(),
 };
+
+const listingContactSchema = z.object({
+  email_address: optionalString,
+  type: z
+    .enum(['Marketing contact', 'Technical contact'])
+    .nullable()
+    .optional(),
+});
+const repositoryContactSchema = z.object({
+  email_address: z.string(),
+  type: z.enum([
+    'Product Manager',
+    'Image Owner',
+    'Notification',
+    'Errata Writer',
+    'Doc Owner',
+    'QE Owner',
+    'Program Manager',
+  ]),
+});
+const documentationLinkSchema = z.object({
+  title: z.string(),
+  type: z.enum([
+    'Customer Case Study',
+    'Documentation',
+    'White Paper',
+    'Blog',
+    'Demo Video',
+    'Product Datasheet',
+    'Recorded Webinar',
+    'Solution Brief',
+  ]),
+  url: z.string(),
+});
 
 /** Minimal source schemas discard fields outside the selected projection. @public */
 export const sourceSchemas = {
@@ -150,13 +185,57 @@ export const sourceSchemas = {
     name: optionalString,
     deleted: z.boolean().nullable().optional(),
     repositories: z.array(id).nullable().optional(),
+    contacts: z.array(listingContactSchema).nullable().optional(),
+    descriptions: z
+      .object({ long: z.string(), short: z.string() })
+      .nullable()
+      .optional(),
+    logo: z.object({ url: optionalString }).nullable().optional(),
+    support: z
+      .object({
+        description: optionalString,
+        email_address: optionalString,
+        phone_number: optionalString,
+        url: z.string(),
+      })
+      .nullable()
+      .optional(),
   }),
   repository: z.object({
     ...resource,
     registry: optionalString,
     repository: optionalString,
-    display_data: z.object({ name: optionalString }).nullable().optional(),
+    display_data: z
+      .object({
+        name: optionalString,
+        long_description: z.string(),
+        short_description: z.string(),
+      })
+      .nullable()
+      .optional(),
     product_listings: z.array(id).nullable().optional(),
+    release_categories: z
+      .array(
+        z.enum([
+          'Generally Available',
+          'Beta',
+          'Tech Preview',
+          'Deprecated',
+          'Mixed',
+        ]),
+      )
+      .nullable()
+      .optional(),
+    architectures: z.array(z.string()).nullable().optional(),
+    documentation_links: z.array(documentationLinkSchema).nullable().optional(),
+    metrics: z
+      .object({
+        last_update_date: date.nullable().optional(),
+        pulls_in_last_30_days: z.number().int().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+    contacts: z.array(repositoryContactSchema).nullable().optional(),
   }),
   team: z.object({ ...base, name: optionalString, members: z.unknown() }),
 };

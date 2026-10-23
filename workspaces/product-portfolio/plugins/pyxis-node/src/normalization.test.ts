@@ -99,9 +99,23 @@ describe('source-normalization source validation', () => {
     expect(
       sourceSchemas.listing.parse({
         _id: 'ABCDEF000000000000000001',
-        contacts: [{ email: 'unused' }],
+        contacts: [
+          {
+            email_address: 'technical@example.com',
+            type: 'Technical contact',
+            email: 'unused',
+          },
+        ],
       }),
-    ).toEqual({ _id: 'abcdef000000000000000001' });
+    ).toEqual({
+      _id: 'abcdef000000000000000001',
+      contacts: [
+        {
+          email_address: 'technical@example.com',
+          type: 'Technical contact',
+        },
+      ],
+    });
     expect(
       sourceSchemas.repository.parse({
         _id: '100000000000000000000001',

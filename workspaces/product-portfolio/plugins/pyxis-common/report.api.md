@@ -14,7 +14,7 @@ export function aggregateRepositoryChi(
   now: number,
 ): ChiAggregate;
 
-// @public
+// @public (undocumented)
 export interface ChiAggregate {
   // (undocumented)
   complete: boolean;
@@ -48,7 +48,7 @@ export interface ChiAggregate {
   };
 }
 
-// @public
+// @public (undocumented)
 export interface ChiAggregateInput {
   // (undocumented)
   projection: RepositoryChiProjection | null;
@@ -56,10 +56,10 @@ export interface ChiAggregateInput {
   repositoryRef: string;
 }
 
-// @public
+// @public (undocumented)
 export type ChiAttention = 'ok' | 'warning' | 'problem' | 'unknown';
 
-// @public
+// @public (undocumented)
 export interface ChiCounts {
   // (undocumented)
   aWithScheduledDrop: number;
@@ -73,7 +73,7 @@ export interface ChiCounts {
   total: number;
 }
 
-// @public
+// @public (undocumented)
 export interface ChiDrop {
   // (undocumented)
   at: string;
@@ -83,7 +83,7 @@ export interface ChiDrop {
   to: ChiGrade;
 }
 
-// @public
+// @public (undocumented)
 export type ChiFailureCode =
   | 'authorization'
   | 'transport'
@@ -100,10 +100,10 @@ export type ChiFailureCode =
   | 'limit'
   | 'cache-invalid';
 
-// @public
+// @public (undocumented)
 export type ChiGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
-// @public
+// @public (undocumented)
 export interface ChiImageObservation {
   // (undocumented)
   architecture: string;
@@ -129,7 +129,7 @@ export interface ChiImageObservation {
   selectedIn: readonly string[];
 }
 
-// @public
+// @public (undocumented)
 export interface ChiPeriod {
   // (undocumented)
   createdAt: string | null;
@@ -141,10 +141,10 @@ export interface ChiPeriod {
   startAt: string;
 }
 
-// @public
+// @public (undocumented)
 export type ChiPopulation = 'latest-published-per-stream-architecture';
 
-// @public
+// @public (undocumented)
 export type ChiSelectionIssue =
   | 'streams-not-configured'
   | 'no-published-candidate'
@@ -155,7 +155,7 @@ export type ChiSelectionIssue =
   | 'conflicting-association'
   | 'tied-latest';
 
-// @public
+// @public (undocumented)
 export interface ChiSnapshotQuality {
   // (undocumented)
   architectureCoverageUnverified: boolean;
@@ -177,7 +177,7 @@ export interface ChiSnapshotQuality {
   transitionDue: boolean;
 }
 
-// @public
+// @public (undocumented)
 export interface ChiStreamSelection {
   // (undocumented)
   architectures: {
@@ -211,7 +211,7 @@ export interface ChiStreamSelection {
   worstKnownGrade: ChiGrade | null;
 }
 
-// @public
+// @public (undocumented)
 export function getRepositoryChiQuality(
   value: RepositoryChiProjection,
   now: number,
@@ -303,7 +303,7 @@ export interface PyxisProjection {
   version: '1';
 }
 
-// @public
+// @public (undocumented)
 export interface RepositoryChiProjection {
   // (undocumented)
   enabled: boolean;
@@ -328,7 +328,7 @@ export interface RepositoryChiProjection {
   } | null;
 }
 
-// @public
+// @public (undocumented)
 export interface RepositoryChiSnapshot {
   // (undocumented)
   contentHash: string;
@@ -391,17 +391,40 @@ export interface RepositoryChiSnapshot {
 // @public
 export interface SourceListing {
   // (undocumented)
+  contacts?:
+    | {
+        email_address?: string | null;
+        type?: string | null;
+      }[]
+    | null;
+  creation_date?: string | null;
+  // (undocumented)
   deleted?: boolean | null;
   // (undocumented)
-  _id: string;
+  descriptions?: {
+    long: string;
+    short: string;
+  } | null;
   // (undocumented)
+  _id: string;
   last_update_date?: string | null;
+  // (undocumented)
+  logo?: {
+    url?: string | null;
+  } | null;
   // (undocumented)
   name?: string | null;
   // (undocumented)
   published?: boolean | null;
   // (undocumented)
   repositories?: string[] | null;
+  // (undocumented)
+  support?: {
+    description?: string | null;
+    email_address?: string | null;
+    phone_number?: string | null;
+    url: string;
+  } | null;
   // (undocumented)
   team_id?: string | null;
   // (undocumented)
@@ -421,19 +444,45 @@ export interface SourceMember {
 // @public
 export interface SourceRepository {
   // (undocumented)
+  architectures?: string[] | null;
+  // (undocumented)
+  contacts?:
+    | {
+        email_address: string;
+        type: string;
+      }[]
+    | null;
+  creation_date?: string | null;
+  // (undocumented)
   display_data?: {
     name?: string | null;
+    long_description: string;
+    short_description: string;
   } | null;
   // (undocumented)
-  _id: string;
+  documentation_links?:
+    | {
+        title: string;
+        type: string;
+        url: string;
+      }[]
+    | null;
   // (undocumented)
+  _id: string;
   last_update_date?: string | null;
+  // (undocumented)
+  metrics?: {
+    last_update_date?: string | null;
+    pulls_in_last_30_days?: number | null;
+  } | null;
   // (undocumented)
   product_listings?: string[] | null;
   // (undocumented)
   published?: boolean | null;
   // (undocumented)
   registry?: string | null;
+  // (undocumented)
+  release_categories?: string[] | null;
   // (undocumented)
   repository?: string | null;
   // (undocumented)

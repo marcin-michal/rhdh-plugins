@@ -55,6 +55,23 @@ export interface SourceListing {
   repositories?: string[] | null;
   published?: boolean | null;
   deleted?: boolean | null;
+  contacts?:
+    | {
+        email_address?: string | null;
+        type?: string | null;
+      }[]
+    | null;
+  descriptions?: { long: string; short: string } | null;
+  logo?: { url?: string | null } | null;
+  support?: {
+    description?: string | null;
+    email_address?: string | null;
+    phone_number?: string | null;
+    url: string;
+  } | null;
+  /** Pyxis source creation time, separate from Backstage entity metadata. */
+  creation_date?: string | null;
+  /** Pyxis source update time, separate from Backstage entity metadata. */
   last_update_date?: string | null;
 }
 
@@ -64,10 +81,36 @@ export interface SourceRepository {
   vendor_label?: unknown;
   registry?: string | null;
   repository?: string | null;
-  display_data?: { name?: string | null } | null;
+  display_data?: {
+    name?: string | null;
+    long_description: string;
+    short_description: string;
+  } | null;
   team_id?: string | null;
   product_listings?: string[] | null;
   published?: boolean | null;
+  release_categories?: string[] | null;
+  architectures?: string[] | null;
+  documentation_links?:
+    | {
+        title: string;
+        type: string;
+        url: string;
+      }[]
+    | null;
+  metrics?: {
+    last_update_date?: string | null;
+    pulls_in_last_30_days?: number | null;
+  } | null;
+  contacts?:
+    | {
+        email_address: string;
+        type: string;
+      }[]
+    | null;
+  /** Pyxis source creation time, separate from Backstage entity metadata. */
+  creation_date?: string | null;
+  /** Pyxis source update time, separate from Backstage entity metadata. */
   last_update_date?: string | null;
 }
 

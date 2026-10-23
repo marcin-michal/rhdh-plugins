@@ -168,7 +168,7 @@ describe('chi-candidate-keyset chi-winner-revalidation repository reader', () =>
     const h = harness([[latest]]);
     jest.mocked(h.client.getRepositoryChiContext).mockResolvedValue({
       state: 'found',
-      data: context({ hiddenUntil: '2026-10-14T00:00:00.000Z' }),
+      data: context({ hiddenUntil: new Date(now + 60_000).toISOString() }),
     });
     const result = await h.reader.readRepository(source, {});
     expect(result).toMatchObject({

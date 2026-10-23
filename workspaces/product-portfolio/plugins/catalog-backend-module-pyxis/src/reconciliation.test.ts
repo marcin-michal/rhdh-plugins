@@ -188,7 +188,14 @@ describe('entity-validity entity validity', () => {
     expect(
       emit.mock.calls.filter(([r]) => r.relation.type === 'pyxisRepositoryOf'),
     ).toHaveLength(3);
-    expect(JSON.stringify(entities)).not.toMatch(/email|System|dependsOn/);
+    expect(
+      JSON.stringify(
+        entities.filter(
+          entity => entity.kind === 'Group' || entity.kind === 'User',
+        ),
+      ),
+    ).not.toMatch(/email/);
+    expect(JSON.stringify(entities)).not.toMatch(/System|dependsOn/);
   });
 });
 

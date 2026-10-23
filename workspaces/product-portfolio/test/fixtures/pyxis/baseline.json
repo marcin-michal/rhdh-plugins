@@ -8,6 +8,26 @@
       "repositories": ["200000000000000000000001", "200000000000000000000002"],
       "published": true,
       "deleted": false,
+      "contacts": [
+        {
+          "email_address": "technical@example.com",
+          "type": "Technical contact"
+        }
+      ],
+      "descriptions": {
+        "long": "Platform long description",
+        "short": "Platform short description"
+      },
+      "logo": {
+        "url": "https://example.com/platform.png"
+      },
+      "support": {
+        "description": "Platform support",
+        "email_address": "support@example.com",
+        "phone_number": "+1-555-0100",
+        "url": "https://example.com/support"
+      },
+      "creation_date": "2025-01-01T00:00:00Z",
       "last_update_date": "2026-01-01T00:00:00Z"
     },
     {
@@ -28,11 +48,33 @@
       "registry": "registry.example.test",
       "repository": "platform/base",
       "display_data": {
-        "name": "Base"
+        "name": "Base",
+        "long_description": "Base repository long description",
+        "short_description": "Base repository short description"
       },
       "team_id": "300000000000000000000001",
       "product_listings": ["100000000000000000000001"],
       "published": true,
+      "release_categories": ["Generally Available", "Tech Preview"],
+      "architectures": ["x86_64", "aarch64"],
+      "documentation_links": [
+        {
+          "title": "Documentation",
+          "type": "Documentation",
+          "url": "https://example.com/docs"
+        }
+      ],
+      "metrics": {
+        "last_update_date": "2026-01-02T00:00:00Z",
+        "pulls_in_last_30_days": 43
+      },
+      "contacts": [
+        {
+          "email_address": "image-owner@redhat.com",
+          "type": "Image Owner"
+        }
+      ],
+      "creation_date": "2025-02-01T00:00:00Z",
       "last_update_date": "2026-01-01T00:00:00Z"
     },
     {
@@ -41,7 +83,9 @@
       "registry": "registry.example.test",
       "repository": "platform/shared",
       "display_data": {
-        "name": "Shared"
+        "name": "Shared",
+        "long_description": "Shared repository long description",
+        "short_description": "Shared repository short description"
       },
       "team_id": "300000000000000000000002",
       "product_listings": [
@@ -57,7 +101,9 @@
       "registry": "registry.example.test",
       "repository": "platform/unlisted",
       "display_data": {
-        "name": "Unlisted"
+        "name": "Unlisted",
+        "long_description": "Unlisted repository long description",
+        "short_description": "Unlisted repository short description"
       },
       "team_id": "300000000000000000000001",
       "product_listings": [],

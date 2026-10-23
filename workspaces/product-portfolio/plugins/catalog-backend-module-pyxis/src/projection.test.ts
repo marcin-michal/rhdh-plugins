@@ -64,11 +64,33 @@ describe('entity-validity processed-projection-safety projection validation and 
     for (const vendor of [null, 42, undefined]) {
       (repository.record as SourceRepository).vendor_label = vendor;
       const entity = projectEntity(repository);
-      expect(JSON.stringify(entity)).not.toContain('42');
+      expect(
+        (parseProjection(entity.spec?.pyxis).record as SourceRepository)
+          .vendor_label,
+      ).not.toBe(42);
     }
 
     delete (repository.record as SourceRepository).vendor_label;
     expect(projectEntity(repository).kind).toBe('Resource');
+  });
+
+  it('retains the expanded Pyxis source fields in the emitted entity record', async () => {
+    const items = await projections();
+    const listing = items.find(item => item.source.kind === 'listing')!;
+    const repository = items.find(item => item.source.kind === 'repository')!;
+    const listingEntity = projectEntity(listing);
+    const repositoryEntity = projectEntity(repository);
+
+    expect(parseProjection(listingEntity.spec?.pyxis).record).toEqual(
+      listing.record,
+    );
+    expect(parseProjection(repositoryEntity.spec?.pyxis).record).toEqual(
+      repository.record,
+    );
+    expect(listingEntity.metadata).not.toHaveProperty('creation_date');
+    expect(listingEntity.metadata).not.toHaveProperty('last_update_date');
+    expect(repositoryEntity.metadata).not.toHaveProperty('creation_date');
+    expect(repositoryEntity.metadata).not.toHaveProperty('last_update_date');
   });
 
   it('rejects missing DTO requirements and invalid source scopes', async () => {

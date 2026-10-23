@@ -68,7 +68,7 @@ export function classifyVendor(
   storedPresence?: VendorEvidence['storedPresence'],
 ): VendorEvidence;
 
-// @public
+// @public (undocumented)
 export function countChiImages(
   images: readonly ChiImageObservation[],
 ): ChiCounts;
@@ -426,7 +426,7 @@ export interface RepositoryChiContext {
   vendor: Pick<VendorEvidence, 'wirePresence' | 'wireValue'>;
 }
 
-// @public
+// @public (undocumented)
 export class RepositoryChiReader implements PyxisChiReadPort {
   constructor(
     sourceInstance: string,

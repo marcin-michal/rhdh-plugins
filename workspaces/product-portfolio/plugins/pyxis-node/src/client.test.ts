@@ -77,7 +77,7 @@ describe('http-query-contract HTTP/query contract', () => {
             },
           });
           expect(request.query).toBe(
-            'query Inventory($page: Int!, $pageSize: Int!, $filter: ProductListingFilter) { find_product_listings(page: $page, page_size: $pageSize, filter: $filter, sort_by: [{field: "_id", order: ASC}]) { error { status detail } page page_size total data { _id name vendor_label team_id repositories published deleted last_update_date } } }',
+            'query Inventory($page: Int!, $pageSize: Int!, $filter: ProductListingFilter) { find_product_listings(page: $page, page_size: $pageSize, filter: $filter, sort_by: [{field: "_id", order: ASC}]) { error { status detail } page page_size total data { _id name vendor_label team_id repositories published deleted contacts { email_address type } descriptions { long short } logo { url } support { description email_address phone_number url } creation_date last_update_date } } }',
           );
 
           return true;
@@ -92,13 +92,31 @@ describe('http-query-contract HTTP/query contract', () => {
         }),
       );
 
-    expect(
-      (await client.listListings({ page: 0, pageSize: 100 })).data,
-    ).toHaveLength(2);
+    const listings = (await client.listListings({ page: 0, pageSize: 100 }))
+      .data;
+    expect(listings).toHaveLength(2);
+    expect(listings[0]).toMatchObject({
+      contacts: baseline.listings[0].contacts,
+      descriptions: baseline.listings[0].descriptions,
+      logo: baseline.listings[0].logo,
+      support: baseline.listings[0].support,
+      creation_date: baseline.listings[0].creation_date,
+      last_update_date: baseline.listings[0].last_update_date,
+    });
 
     agent
       .get(endpoint)
-      .intercept({ path: '/graphql', method: 'POST' })
+      .intercept({
+        path: '/graphql',
+        method: 'POST',
+        body: body => {
+          const request = JSON.parse(String(body));
+          expect(request.query).toBe(
+            'query Inventory($page: Int!, $pageSize: Int!, $filter: ContainerRepositoryFilter) { find_repositories(page: $page, page_size: $pageSize, filter: $filter, sort_by: [{field: "_id", order: ASC}]) { error { status detail } page page_size total data { _id vendor_label registry repository display_data { name long_description short_description } team_id product_listings published last_update_date creation_date release_categories architectures documentation_links { title type url } metrics { last_update_date pulls_in_last_30_days } contacts { email_address type } } } }',
+          );
+          return true;
+        },
+      })
       .reply(
         200,
         result('find_repositories', baseline.repositories, {
@@ -108,10 +126,20 @@ describe('http-query-contract HTTP/query contract', () => {
         }),
       );
 
-    expect(
-      (await client.listRepositories({ page: 0, pageSize: 100 })).data[1]
-        .published,
-    ).toBe(false);
+    const repositories = (
+      await client.listRepositories({ page: 0, pageSize: 100 })
+    ).data;
+    expect(repositories[1].published).toBe(false);
+    expect(repositories[0]).toMatchObject({
+      display_data: baseline.repositories[0].display_data,
+      release_categories: baseline.repositories[0].release_categories,
+      architectures: baseline.repositories[0].architectures,
+      documentation_links: baseline.repositories[0].documentation_links,
+      metrics: baseline.repositories[0].metrics,
+      creation_date: baseline.repositories[0].creation_date,
+      last_update_date: baseline.repositories[0].last_update_date,
+      contacts: baseline.repositories[0].contacts,
+    });
 
     agent
       .get(endpoint)
