@@ -19,6 +19,8 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { verifyFrontendExport } from './verify-frontend-export.mjs';
+import { releasePair } from './release-pair.mjs';
 import { verifyExport } from './verify-export.mjs';
 import { checkAcceptance } from './check-acceptance.mjs';
 import { checkCoverage, implementationFiles } from './check-coverage.mjs';
@@ -50,6 +52,10 @@ for (const path of [
   'coverage/source-state.json',
   'release-evidence/database-source-state.json',
   'release-evidence/oci.json',
+  'release-evidence/frontend-oci.json',
+  'release-evidence/rhdh-installation.json',
+  'release-evidence/frontend-host-manual.json',
+  'release-evidence/registry-pair.json',
 ])
   assert.equal(read(path).sourceHash, sourceState(), `Stale evidence: ${path}`);
 checkCoverage(read('coverage/coverage-final.json'), implementationFiles());
@@ -60,6 +66,8 @@ checkAcceptance(
   'database',
 );
 const exported = verifyExport();
+verifyFrontendExport();
+const pair = releasePair();
 const oci = read('release-evidence/oci.json');
 const installed = read('release-evidence/rhdh-installation.json');
 assert.equal(
@@ -71,8 +79,63 @@ assert.equal(oci.version, exported.version);
 assert.equal(installed.passed, true);
 assert.equal(installed.target, '1.10.3');
 assert(
-  installed.artifact.endsWith(`@${oci.digest}`),
+  installed.artifact.includes(`@${oci.digest}!`),
   'Smoke test used a different artifact',
+);
+assert(
+  installed.frontend.includes(`@${pair.frontend.digest}!`),
+  'Host used a different frontend',
+);
+assert.equal(installed.appPackageName, 'app-next');
+assert.equal(installed.standardModuleFederation, true);
+const registry = read('release-evidence/registry-pair.json');
+assert.equal(registry.platform, pair.platform);
+for (const [name, artifact] of [
+  ['backend', pair.backend],
+  ['frontend', pair.frontend],
+]) {
+  const confirmed = registry[name];
+  assert.equal(
+    confirmed.platformDigest,
+    artifact.digest,
+    'Registry platform manifest differs from tested artifact',
+  );
+  assert.equal(
+    confirmed.packagePath,
+    artifact.packagePath,
+    'Registry package path mismatch',
+  );
+  assert.equal(confirmed.confirmed, true, 'Registry confirmation missing');
+  assert.equal(
+    confirmed.ref,
+    name === 'backend' ? installed.artifact : installed.frontend,
+    'Installed reference differs from confirmed registry ref',
+  );
+}
+const manual = read('release-evidence/frontend-host-manual.json');
+assert.equal(manual.image, installed.image);
+assert.equal(manual.frontend, installed.frontend);
+assert.equal(manual.backend, installed.artifact);
+assert.equal(manual.passed, true);
+for (const check of [
+  'entity-links',
+  'pagination',
+  'team-user-data',
+  'tab-inventory',
+  'overview-exclusion',
+  'restart',
+  'upgrade',
+  'rollback',
+])
+  assert.equal(
+    manual.checks?.[check],
+    true,
+    `Missing manual host check: ${check}`,
+  );
+assert(
+  Array.isArray(manual.entityContentInventory) &&
+    manual.entityContentInventory.length > 0,
+  'Missing exact-host extension inventory',
 );
 for (const phase of [
   'baseline',
@@ -94,7 +157,13 @@ writeFileSync(
       sourceCommit: exported.sourceCommit,
       sourceDirty: exported.sourceDirty,
       lockfileHash: oci.lockfileHash,
-      artifact: installed.artifact,
+      backend: installed.artifact,
+      frontend: installed.frontend,
+      rollbackPair: {
+        backend: installed.previous,
+        frontend: installed.previousFrontend,
+      },
+      playwright: 'deferred by user',
       platform: oci.platform,
       target: installed.image,
     },

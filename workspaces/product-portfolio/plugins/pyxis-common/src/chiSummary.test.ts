@@ -3,6 +3,7 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  */
 
+import { parseRepositoryChiProjection } from './projectionParsers';
 import type { RepositoryChiProjection } from './chi';
 import { aggregateRepositoryChi, getRepositoryChiQuality } from './chiSummary';
 
@@ -319,3 +320,21 @@ describe('chi listing aggregation and freshness', () => {
     });
   });
 });
+
+it.each(['ready', 'partial', 'empty'] as const)(
+  'validates nested %s health and rejects malformed images',
+  state => {
+    expect(parseRepositoryChiProjection({ ...projection, state }).state).toBe(
+      state,
+    );
+    expect(() =>
+      parseRepositoryChiProjection({
+        ...projection,
+        snapshot: {
+          ...projection.snapshot,
+          images: [{ imageId: 'secret-payload' }],
+        },
+      }),
+    ).toThrow('spec.pyxisChi schema 2');
+  },
+);

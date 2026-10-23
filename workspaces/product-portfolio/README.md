@@ -1,8 +1,9 @@
 # Product Portfolio — Pyxis consumer
 
 Read-only Pyxis inventory ingestion for RHDH 1.10.3 / Backstage 1.49.4. The
-workspace contains four private packages and a local catalog backend harness:
+workspace contains five private plugin packages and a local frontend/backend app:
 
+- `product-portfolio`: catalog browsing, entity details and repository health views.
 - `product-portfolio-common`: neutral source identities, read envelopes and associations.
 - `pyxis-common`: source projections, admission, roster, host-binding and repository
   CHI snapshot contracts.
@@ -18,7 +19,7 @@ ownership comes from one `team_id`. Only direct listing repository IDs establish
 `pyxisHasRepository` / `pyxisRepositoryOf` relationships. Repository Resources are
 enriched with bounded `spec.pyxisChi` observations for the latest published image
 per configured stream and observed/expected architecture. This slice has no Product
-System, image catalog entities, email, Konflux, frontend or MCP runtime.
+System, image catalog entities, email, Konflux or MCP runtime.
 
 Provider `vendorPolicy` defaults to `redhat-only`: only exact `redhat` records
 qualify. Set `redhat-or-unlabeled` to also admit null or missing labels. Malformed
@@ -45,7 +46,10 @@ yarn build:all
 yarn build:api-reports:only --ci
 ```
 
-`yarn start` starts the development catalog backend. No provider is registered
+`yarn start` starts the live frontend and catalog/auth backend. Use
+`yarn start:demo` for an explicitly labeled, frontend-only fixture demo. See the
+[frontend development guide](plugins/product-portfolio/README.md#local-development).
+No provider is registered
 without configuration. Add a local `app-config.local.yaml` using the module's
 [configuration example](plugins/catalog-backend-module-pyxis/app-config.dynamic.yaml).
 The example uses environment variables for mounted mTLS paths, never secret values.

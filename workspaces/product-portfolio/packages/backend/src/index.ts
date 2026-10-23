@@ -16,11 +16,10 @@
 
 import { createBackend } from '@backstage/backend-defaults';
 
+import { backendFeatures } from './features';
+
 const backend = createBackend();
-backend.add(import('@backstage/plugin-catalog-backend'));
-backend.add(
-  import(
-    '@red-hat-developer-hub/backstage-plugin-catalog-backend-module-pyxis'
-  ),
-);
+for (const feature of backendFeatures) {
+  backend.add(feature);
+}
 backend.start();

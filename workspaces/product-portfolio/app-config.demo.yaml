@@ -1,0 +1,5 @@
+# Explicit frontend-only demo. Does not load app-config.local.yaml or call Pyxis.
+app:
+  title: Product Portfolio demo
+productPortfolio:
+  demo: true

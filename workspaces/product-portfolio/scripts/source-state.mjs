@@ -37,7 +37,7 @@ export function sourceState() {
         const filename = join(directory, name);
         return statSync(filename).isDirectory()
           ? walk(filename)
-          : /\.(ts|js|mjs|cjs|json|ya?ml)$/.test(name)
+          : /\.(tsx?|jsx?|mjs|cjs|json|ya?ml|css|html)$/.test(name)
           ? [filename]
           : [];
       });
@@ -45,6 +45,8 @@ export function sourceState() {
     'package.json',
     'yarn.lock',
     'tsconfig.json',
+    '.yarnrc.yml',
+    'app-config.yaml',
     ...['plugins', 'packages', 'scripts', 'test'].flatMap(walk),
   ].sort();
   const digest = createHash('sha256');

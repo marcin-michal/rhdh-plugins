@@ -15,6 +15,10 @@
  */
 
 import {
+  PYXIS_ANNOTATIONS,
+  PYXIS_ENTITY_TYPES,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import {
   getCompoundEntityRef,
   stringifyEntityRef,
   type Entity,
@@ -243,8 +247,8 @@ export function projectEntity(projection: PyxisProjection): Entity {
     spec = {
       type:
         source.kind === 'listing'
-          ? 'pyxis-product-listing'
-          : 'container-repository',
+          ? PYXIS_ENTITY_TYPES.listing
+          : PYXIS_ENTITY_TYPES.repository,
       owner: sourceRef({
         sourceInstance: source.sourceInstance,
         kind: 'team',
@@ -276,7 +280,7 @@ export function projectEntity(projection: PyxisProjection): Entity {
       })),
     };
     spec = {
-      type: 'team',
+      type: PYXIS_ENTITY_TYPES.team,
       children: [],
       members: p.roster!.members.map(member => sourceRef(member.user)),
     };
@@ -301,11 +305,11 @@ export function projectEntity(projection: PyxisProjection): Entity {
           source.kind
         }/${encodeURIComponent(source.id)}`,
         'backstage.io/managed-by-origin-location': `pyxis:${source.sourceInstance}`,
-        'pyxis.redhat.com/source-instance': source.sourceInstance,
-        'pyxis.redhat.com/source-kind': source.kind,
-        'pyxis.redhat.com/source-id': source.id,
-        'pyxis.redhat.com/provider-id': providerId(source.sourceInstance),
-        'pyxis.redhat.com/projection-version': '1',
+        [PYXIS_ANNOTATIONS.sourceInstance]: source.sourceInstance,
+        [PYXIS_ANNOTATIONS.sourceKind]: source.kind,
+        [PYXIS_ANNOTATIONS.sourceId]: source.id,
+        [PYXIS_ANNOTATIONS.providerId]: providerId(source.sourceInstance),
+        [PYXIS_ANNOTATIONS.projectionVersion]: '1',
       },
     },
     spec: { ...spec, pyxis: JSON.parse(JSON.stringify(p)) as JsonObject },

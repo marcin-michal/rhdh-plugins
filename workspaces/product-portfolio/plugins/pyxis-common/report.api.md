@@ -5,6 +5,7 @@
 ```ts
 import type { AssociationSet } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 import type { CatalogBinding } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
+import type { Entity } from '@backstage/catalog-model';
 import type { ReadMetadata } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 import type { SourceKey } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 
@@ -284,6 +285,60 @@ export interface InventorySnapshot {
     record: SourceTeam;
     roster: TeamRosterSnapshot;
   }[];
+}
+
+// @public
+export function isPyxisListing(entity: Entity): boolean;
+
+// @public
+export function isPyxisRepository(entity: Entity): boolean;
+
+// @public
+export function isPyxisTeam(entity: Entity): boolean;
+
+// @public
+export function isPyxisUser(entity: Entity): boolean;
+
+// @public
+export function parsePyxisEntity(entity: Entity): PyxisProjection;
+
+// @public
+export function parsePyxisProjection(value: unknown): PyxisProjection;
+
+// @public
+export function parseRepositoryChiProjection(
+  value: unknown,
+): RepositoryChiProjection;
+
+// @public
+export const PYXIS_ANNOTATIONS: {
+  readonly sourceInstance: 'pyxis.redhat.com/source-instance';
+  readonly sourceKind: 'pyxis.redhat.com/source-kind';
+  readonly sourceId: 'pyxis.redhat.com/source-id';
+  readonly providerId: 'pyxis.redhat.com/provider-id';
+  readonly projectionVersion: 'pyxis.redhat.com/projection-version';
+};
+
+// @public
+export const PYXIS_ENTITY_TYPES: {
+  readonly listing: 'pyxis-product-listing';
+  readonly repository: 'container-repository';
+  readonly team: 'team';
+};
+
+// @public
+export const PYXIS_NAMESPACE = 'pyxis';
+
+// @public
+export const PYXIS_RELATIONS: {
+  readonly hasRepository: 'pyxisHasRepository';
+  readonly repositoryOf: 'pyxisRepositoryOf';
+};
+
+// @public
+export class PyxisContractError extends Error {
+  constructor(contract: 'spec.pyxis version 1' | 'spec.pyxisChi schema 2');
+  readonly contract: 'spec.pyxis version 1' | 'spec.pyxisChi schema 2';
 }
 
 // @public

@@ -19,24 +19,37 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { verifyExport, moduleDirectory } from './verify-export.mjs';
 
-const tag = process.env.PYXIS_OCI_TAG;
+import { resolve } from 'node:path';
+import {
+  verifyFrontendExport,
+  frontendDirectory,
+} from './verify-frontend-export.mjs';
+const target = process.argv[2] ?? 'backend';
+assert(
+  ['backend', 'frontend'].includes(target),
+  'Expected backend or frontend',
+);
+const frontend = target === 'frontend';
+const tag = frontend
+  ? process.env.PRODUCT_PORTFOLIO_FRONTEND_OCI_TAG
+  : process.env.PYXIS_OCI_TAG;
 const platform = process.env.PYXIS_TARGET_PLATFORM;
 
 assert(
   tag && /^[a-zA-Z0-9][a-zA-Z0-9./:_-]+$/.test(tag) && !tag.endsWith(':latest'),
-  'Set an explicit PYXIS_OCI_TAG (no latest tag)',
+  'Set the explicit backend/frontend OCI tag (no latest tag)',
 );
 assert(
   platform && /^linux\/(amd64|arm64)$/.test(platform),
   'Set the approved PYXIS_TARGET_PLATFORM',
 );
 
-const inventory = verifyExport();
+const inventory = frontend ? verifyFrontendExport() : verifyExport();
 const before = execFileSync('git', ['diff', '--', '.'], { encoding: 'utf8' });
 execFileSync(
-  'yarn',
+  process.execPath,
   [
-    'rhdh-cli',
+    resolve('node_modules/@red-hat-developer-hub/cli/bin/rhdh-cli'),
     'plugin',
     'package',
     '--tag',
@@ -46,7 +59,7 @@ execFileSync(
     '--container-tool',
     'podman',
   ],
-  { cwd: moduleDirectory, stdio: 'inherit' },
+  { cwd: frontend ? frontendDirectory : moduleDirectory, stdio: 'inherit' },
 );
 const inspect = JSON.parse(
   execFileSync('podman', ['image', 'inspect', tag], { encoding: 'utf8' }),
@@ -59,6 +72,24 @@ const metadata = JSON.parse(Buffer.from(annotation, 'base64').toString('utf8'));
 assert(
   Array.isArray(metadata) && metadata.length === 1,
   'Expected exactly one annotated dynamic package',
+);
+const packagePaths = Object.keys(metadata[0]);
+assert.equal(packagePaths.length, 1, 'Expected exactly one package path');
+const packagePath = packagePaths[0];
+assert.match(
+  packagePath,
+  /^[a-zA-Z0-9._-]+$/,
+  'Invalid annotated package path',
+);
+assert.equal(
+  metadata[0][packagePath].name,
+  inventory.name,
+  'Image contains a different package',
+);
+assert.equal(
+  metadata[0][packagePath].version,
+  inventory.version,
+  'Image contains a different version',
 );
 assert.equal(
   execFileSync('git', ['diff', '--', '.'], { encoding: 'utf8' }),
@@ -73,14 +104,18 @@ assert(
 );
 
 writeFileSync(
-  'release-evidence/oci.json',
+  `release-evidence/${frontend ? 'frontend-' : ''}oci.json`,
   JSON.stringify(
     {
       ...inventory,
       tag,
       platform,
       digest,
+      configDigest: inspect.Id,
+      layerDigests: inspect.RootFS?.Layers,
+      registryConfirmed: false,
       dynamicPackages: metadata,
+      packagePath,
       published: false,
     },
     null,

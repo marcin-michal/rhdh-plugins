@@ -1,11 +1,22 @@
 app:
-  title: Product Portfolio development backend
+  title: Product Portfolio
   baseUrl: http://localhost:3000
+  extensions:
+    - entity-content:catalog/overview:
+        config:
+          filter:
+            $not:
+              metadata.annotations.pyxis.redhat.com/source-instance:
+                $exists: true
 backend:
   baseUrl: http://localhost:7007
   listen:
     host: 127.0.0.1
     port: 7007
+  cors:
+    origin: http://localhost:3000
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
   database:
     client: better-sqlite3
     connection: ':memory:'
@@ -14,3 +25,12 @@ catalog:
     - allow: [Resource, Group, User]
 # Add mounted mTLS credentials and stable source IDs in app-config.local.yaml.
 # No ingestion is registered until both source and provider configuration exist.
+
+# The guest provider issues real Backstage tokens for this local development app.
+# It refuses production use unless explicitly overridden; do not override it.
+auth:
+  environment: development
+  providers:
+    guest: {}
+productPortfolio:
+  demo: false

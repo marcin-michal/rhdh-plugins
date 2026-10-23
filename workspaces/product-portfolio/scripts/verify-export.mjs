@@ -205,7 +205,22 @@ export function verifyExport() {
     configSchema: pkg.configSchema,
     dependencies: pkg.dependencies ?? {},
     sharedDependencies: pkg.peerDependencies ?? {},
-    files,
+    files: files.map(path => {
+      const filename = join(exportDirectory, path);
+      const stat = statSync(filename);
+      return {
+        path,
+        mode: stat.mode & 0o777,
+        size: stat.size,
+        sha256: createHash('sha256')
+          .update(readFileSync(filename))
+          .digest('hex'),
+      };
+    }),
+    nodeVersion: process.version,
+    yarnVersion: execFileSync('yarn', ['--version'], {
+      encoding: 'utf8',
+    }).trim(),
     exporterVersion: '1.10.8',
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], {
       encoding: 'utf8',

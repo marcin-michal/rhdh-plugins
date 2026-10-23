@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+import {
+  PYXIS_ANNOTATIONS,
+  PYXIS_ENTITY_TYPES,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { createHash } from 'node:crypto';
 import { metrics } from '@opentelemetry/api';
 import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
@@ -286,14 +290,14 @@ export class PyxisChiProcessor implements CatalogProcessor {
     processorCache: CatalogProcessorCache,
   ): Promise<Entity> {
     const sourceInstance =
-      entity.metadata.annotations?.['pyxis.redhat.com/source-instance'];
+      entity.metadata.annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
     const runtime = sourceInstance ? this.runtimes[sourceInstance] : undefined;
 
     if (
       !runtime ||
       entity.kind !== 'Resource' ||
-      entity.spec?.type !== 'container-repository' ||
-      entity.metadata.annotations?.['pyxis.redhat.com/source-kind'] !==
+      entity.spec?.type !== PYXIS_ENTITY_TYPES.repository ||
+      entity.metadata.annotations?.[PYXIS_ANNOTATIONS.sourceKind] !==
         'repository'
     ) {
       return entity;

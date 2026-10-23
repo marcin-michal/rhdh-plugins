@@ -339,6 +339,36 @@
       "id": "T38-chi-bounded-truthful-empty",
       "jobs": ["unit"],
       "tests": ["marked latest fallback", "unconfigured multi-stream context"]
+    },
+    {
+      "id": "F01-browser-contracts",
+      "jobs": ["unit"],
+      "tests": ["browser-safe projection contracts"]
+    },
+    {
+      "id": "F02-frontend-models",
+      "jobs": ["unit"],
+      "tests": ["portfolio models"]
+    },
+    {
+      "id": "F03-frontend-filters",
+      "jobs": ["unit"],
+      "tests": ["portfolio filters"]
+    },
+    {
+      "id": "F04-nfs-wiring",
+      "jobs": ["unit"],
+      "tests": ["portfolio NFS wiring"]
+    },
+    {
+      "id": "F05-relation-resolution",
+      "jobs": ["unit"],
+      "tests": ["portfolio relation resolution"]
+    },
+    {
+      "id": "F06-entity-content",
+      "jobs": ["unit"],
+      "tests": ["portfolio entity content"]
     }
   ]
 }

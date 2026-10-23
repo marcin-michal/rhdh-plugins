@@ -56,7 +56,7 @@ const scope = hasScope
   ? []
   : [
       '--testPathPatterns',
-      'plugins/(product-portfolio-common|pyxis-common|pyxis-node|catalog-backend-module-pyxis)/',
+      'plugins/(product-portfolio|product-portfolio-common|pyxis-common|pyxis-node|catalog-backend-module-pyxis)/',
     ];
 const run = (program, args) => {
   const result = spawnSync(program, args, {
@@ -85,7 +85,11 @@ run('yarn', [
 ]);
 run(process.execPath, ['scripts/check-coverage.mjs']);
 run(process.execPath, ['scripts/check-acceptance.mjs']);
-run(process.execPath, ['--test', 'scripts/gates.test.mjs']);
+run(process.execPath, [
+  '--test',
+  'scripts/gates.test.mjs',
+  'scripts/release-pair.test.mjs',
+]);
 
 assert.equal(sourceState(), sourceHash, 'Source changed during tests');
 writeFileSync('coverage/source-state.json', JSON.stringify({ sourceHash }));

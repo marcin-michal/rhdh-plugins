@@ -94,9 +94,11 @@ export function implementationFiles() {
   return walk('plugins')
     .filter(
       filename =>
-        /\/src\/.*\.ts$/.test(filename) &&
-        !/\/(node_modules|dist|dist-types|dist-dynamic)\//.test(filename) &&
-        !/(\.d\.ts|\.test\.ts|\/index\.ts|\/ports\.ts|\/chi\.ts|\/setupTests\.ts|\/testSupport\.ts)$/.test(
+        /\/src\/.*\.tsx?$/.test(filename) &&
+        !/\/(node_modules|dist|dist-types|dist-dynamic|testUtils)\//.test(
+          filename,
+        ) &&
+        !/(\.d\.ts|\.test\.tsx?|\/index\.ts|\/ports\.ts|\/chi\.ts|\/setupTests\.ts|\/testSupport\.ts)$/.test(
           filename,
         ),
     )

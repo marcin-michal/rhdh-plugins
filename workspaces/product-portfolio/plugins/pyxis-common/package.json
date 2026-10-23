@@ -34,7 +34,9 @@
   "private": true,
   "license": "Apache-2.0",
   "dependencies": {
-    "@red-hat-developer-hub/backstage-plugin-product-portfolio-common": "workspace:^"
+    "@backstage/catalog-model": "1.7.7",
+    "@red-hat-developer-hub/backstage-plugin-product-portfolio-common": "workspace:^",
+    "zod": "3.25.76"
   },
   "repository": {
     "type": "git",

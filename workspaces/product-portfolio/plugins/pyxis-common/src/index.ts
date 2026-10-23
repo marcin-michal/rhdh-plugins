@@ -196,3 +196,6 @@ export interface PyxisProjection {
     addedDate?: string;
   }[];
 }
+
+export * from './entityContracts';
+export * from './projectionParsers';

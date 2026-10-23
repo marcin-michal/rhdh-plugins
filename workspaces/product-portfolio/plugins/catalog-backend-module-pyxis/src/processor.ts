@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+import {
+  PYXIS_ANNOTATIONS,
+  PYXIS_RELATIONS,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import type { Entity } from '@backstage/catalog-model';
 import { parseEntityRef } from '@backstage/catalog-model';
 import {
@@ -34,11 +38,10 @@ export class PyxisRelationshipProcessor implements CatalogProcessor {
     emit: CatalogProcessorEmit,
   ): Promise<Entity> {
     const sourceInstance =
-      entity.metadata.annotations?.['pyxis.redhat.com/source-instance'];
+      entity.metadata.annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
     if (
       !sourceInstance ||
-      entity.metadata.annotations?.['pyxis.redhat.com/source-kind'] !==
-        'listing'
+      entity.metadata.annotations?.[PYXIS_ANNOTATIONS.sourceKind] !== 'listing'
     ) {
       return entity;
     }
@@ -57,14 +60,14 @@ export class PyxisRelationshipProcessor implements CatalogProcessor {
         processingResult.relation({
           source,
           target,
-          type: 'pyxisHasRepository',
+          type: PYXIS_RELATIONS.hasRepository,
         }),
       );
       emit(
         processingResult.relation({
           source: target,
           target: source,
-          type: 'pyxisRepositoryOf',
+          type: PYXIS_RELATIONS.repositoryOf,
         }),
       );
     }

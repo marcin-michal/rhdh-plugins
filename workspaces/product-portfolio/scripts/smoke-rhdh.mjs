@@ -15,6 +15,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { sourceState } from './source-state.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   readFileSync,
@@ -34,15 +35,28 @@ import { setTimeout as delay } from 'node:timers/promises';
 const image = process.env.PYXIS_RHDH_IMAGE;
 const artifact = process.env.PYXIS_OCI_REF;
 const previous = process.env.PYXIS_PREVIOUS_OCI_REF;
+const frontend = process.env.PRODUCT_PORTFOLIO_FRONTEND_OCI_REF;
+const previousFrontend =
+  process.env.PRODUCT_PORTFOLIO_PREVIOUS_FRONTEND_OCI_REF;
+assert.equal(
+  process.env.APP_CONFIG_app_packageName,
+  'app-next',
+  'Exact host requires app-next',
+);
+assert.equal(
+  process.env.ENABLE_STANDARD_MODULE_FEDERATION,
+  'true',
+  'Exact host requires standard Module Federation',
+);
 const platform = process.env.PYXIS_TARGET_PLATFORM;
 assert(
   image && /^.+@sha256:[a-f0-9]{64}$/.test(image),
   'Set PYXIS_RHDH_IMAGE to the approved RHDH 1.10.3 digest',
 );
-for (const ref of [artifact, previous])
+for (const ref of [artifact, previous, frontend, previousFrontend])
   assert(
-    ref && /^oci:\/\/.+@sha256:[a-f0-9]{64}$/.test(ref),
-    'Set PYXIS_OCI_REF and PYXIS_PREVIOUS_OCI_REF to immutable tested artifacts',
+    ref && /^oci:\/\/.+@sha256:[a-f0-9]{64}![a-zA-Z0-9._-]+$/.test(ref),
+    'Set current and previous backend/frontend OCI refs to platform digests with verified !package-path suffixes',
   );
 assert.notEqual(
   artifact,
@@ -205,6 +219,10 @@ try {
     '--user',
     String(process.getuid()),
     '--network=host',
+    '--env',
+    'APP_CONFIG_app_packageName=app-next',
+    '--env',
+    'ENABLE_STANDARD_MODULE_FEDERATION=true',
     '--platform',
     platform,
     '--volume',
@@ -221,11 +239,36 @@ try {
   const writeConfig = (ref, paused) => {
     writeFileSync(
       join(directory, 'dynamic-plugins.yaml'),
-      JSON.stringify({ plugins: [{ package: ref, disabled: false }] }),
+      JSON.stringify({
+        plugins: [
+          { package: ref, disabled: false },
+          {
+            package: ref === previous ? previousFrontend : frontend,
+            disabled: false,
+          },
+        ],
+      }),
     );
     writeFileSync(
       join(directory, 'app-config.yaml'),
       JSON.stringify({
+        app: {
+          extensions: [
+            {
+              'entity-content:catalog/overview': {
+                config: {
+                  filter: {
+                    $not: {
+                      'metadata.annotations.pyxis.redhat.com/source-instance': {
+                        $exists: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
         backend: {
           baseUrl: `http://localhost:${port}`,
           listen: { host: '127.0.0.1', port },
@@ -376,6 +419,12 @@ try {
     join(evidence, 'rhdh-installation.json'),
     JSON.stringify(
       {
+        sourceHash: sourceState(),
+        frontend,
+        previousFrontend,
+        appPackageName: 'app-next',
+        standardModuleFederation: true,
+        frontendManualAcceptance: false,
         target: '1.10.3',
         image,
         artifact,

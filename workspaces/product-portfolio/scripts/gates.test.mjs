@@ -18,7 +18,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { checkAcceptance } from './check-acceptance.mjs';
-import { checkCoverage } from './check-coverage.mjs';
+import { checkCoverage, implementationFiles } from './check-coverage.mjs';
 
 test('acceptance gate rejects missing and skipped scenarios', () => {
   const manifest = {
@@ -109,4 +109,19 @@ test('coverage gate rejects lowered, missing and uncovered domain evidence', () 
   report[resolve(filename)].b[0][1] = 1;
   report[resolve(filename)].s[0] = 0;
   assert.throws(() => checkCoverage(report, [filename]));
+});
+
+test('coverage discovery includes TSX implementation and excludes TSX tests', () => {
+  const files = implementationFiles();
+  assert(files.includes('plugins/product-portfolio/src/alpha.tsx'));
+  assert(
+    files.includes(
+      'plugins/product-portfolio/src/catalog/ProductPortfolioPage.tsx',
+    ),
+  );
+  assert(
+    !files.some(
+      file => file.endsWith('.test.tsx') || file.includes('/testUtils/'),
+    ),
+  );
 });
