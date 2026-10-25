@@ -169,6 +169,23 @@ const chiAssociationSchema = z.object({
   push_date: nullableDate,
   tags: z.array(chiTagSchema).max(1024),
 });
+const chiSelectedAssociationSchema = chiAssociationSchema.extend({
+  published_date: nullableDate,
+  manifest_schema2_digest: z
+    .string()
+    .min(1)
+    .max(256)
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+  manifest_list_digest: z
+    .string()
+    .min(1)
+    .max(256)
+    .nullable()
+    .optional()
+    .transform(value => value ?? null),
+});
 const chiCandidateSchema = z.object({
   _id: z.string().refine(isObjectId).transform(canonicalId),
   architecture: z
@@ -184,6 +201,7 @@ const chiCandidateSchema = z.object({
   repositories: z.array(chiAssociationSchema).max(128),
 });
 const selectedImageSchema = chiCandidateSchema.extend({
+  repositories: z.array(chiSelectedAssociationSchema).max(128),
   freshness_grades: z.unknown().optional(),
 });
 const chiPageSchema = z.object({
@@ -194,7 +212,7 @@ const chiPageSchema = z.object({
 
 const REPOSITORY_CHI_CONTEXT_QUERY = `query RepositoryChiContext($id: ObjectIDFilterScalar!) { get_repository(id: $id) { error { status detail } data { _id registry repository vendor_label published last_update_date freshness_grades_unknown_until_date content_stream_tags includes_multiple_content_streams } } }`;
 const REPOSITORY_CHI_CANDIDATES_QUERY = `query RepositoryChiCandidates($registry: String!, $repository: String!, $filter: ContainerImageFilter, $pageSize: Int!) { find_repository_images_by_registry_path(registry: $registry, repository: $repository, filter: $filter, page: 0, page_size: $pageSize, sort_by: [{ field: "_id", order: ASC }]) { error { status detail } page page_size data { _id architecture deleted repositories { registry repository published push_date tags { name added_date removed_date } } } } }`;
-const SELECTED_IMAGE_CHI_QUERY = `query SelectedImageChi($id: ObjectIDFilterScalar!, $includeGrades: Boolean!) { get_image(id: $id) { error { status detail } data { _id architecture deleted repositories { registry repository published push_date tags { name added_date removed_date } } freshness_grades @include(if: $includeGrades) { grade start_date end_date creation_date } } } }`;
+const SELECTED_IMAGE_CHI_QUERY = `query SelectedImageChi($id: ObjectIDFilterScalar!, $includeGrades: Boolean!) { get_image(id: $id) { error { status detail } data { _id architecture deleted repositories { registry repository published published_date push_date manifest_schema2_digest manifest_list_digest tags { name added_date removed_date } } freshness_grades @include(if: $includeGrades) { grade start_date end_date creation_date } } } }`;
 
 const transient = (status: number) =>
   status === 429 || [500, 502, 503, 504].includes(status);

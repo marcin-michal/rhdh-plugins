@@ -3,6 +3,10 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  */
 
+import type {
+  ChiImageMetadata,
+  RepositoryChiSnapshot,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import type { ChiSelectionWinner } from './chiSelection';
 import {
   countChiImages,
@@ -14,12 +18,16 @@ import {
 const winner = (
   imageId: string,
   architecture = 'amd64',
-): ChiSelectionWinner => ({
+): ChiSelectionWinner & ChiImageMetadata => ({
   imageId,
   architecture,
   selectedIn: ['9.4'],
   pushDates: { '9.4': '2026-10-12T00:00:00.000Z' },
   fingerprints: { '9.4': 'fingerprint' },
+  activeTags: ['9.4'],
+  manifestDigest: null,
+  manifestListDigest: null,
+  publishedAt: null,
 });
 const observedAt = '2026-10-13T12:00:00.000Z';
 
@@ -568,49 +576,55 @@ describe('chi counts and stream summaries', () => {
       worstKnownGrade: null,
       earliestDrop: null,
     });
+    const snapshot: RepositoryChiSnapshot = {
+      schemaVersion: '2',
+      normalizationVersion: 'pyxis-chi-v2',
+      population: 'latest-published-per-stream-architecture',
+      source: {
+        sourceInstance: 'internal',
+        kind: 'repository',
+        id: '200000000000000000000001',
+      },
+      locator: {
+        registry: 'registry.redhat.io',
+        repository: 'example/component',
+      },
+      streamPolicy: {
+        tags: ['9.4'],
+        origin: 'configured',
+        includesMultipleContentStreams: false,
+      },
+      startedAt: observedAt,
+      selectionAt: observedAt,
+      observedAt,
+      contextCheckedAt: observedAt,
+      sourceUpdatedAt: null,
+      sourceCalculationFreshness: 'unknown',
+      hiddenUntil: null,
+      published: true,
+      coverage: {
+        fetch: 'complete',
+        atomic: false,
+        allRepositoryImages: false,
+        selection: 'complete',
+        architectureExpectations: 'unverified',
+        grades: 'partial',
+        candidatePages: 1,
+        candidateRecords: 1,
+      },
+      issues: [],
+      contentHash: '',
+      streams,
+      images: [unknown],
+      counts: countChiImages([unknown]),
+    };
+    const hash = hashChiSnapshotEvidence(snapshot);
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
     expect(
       hashChiSnapshotEvidence({
-        schemaVersion: '2',
-        normalizationVersion: 'pyxis-chi-v2',
-        population: 'latest-published-per-stream-architecture',
-        source: {
-          sourceInstance: 'internal',
-          kind: 'repository',
-          id: '200000000000000000000001',
-        },
-        locator: {
-          registry: 'registry.redhat.io',
-          repository: 'example/component',
-        },
-        streamPolicy: {
-          tags: ['9.4'],
-          origin: 'configured',
-          includesMultipleContentStreams: false,
-        },
-        startedAt: observedAt,
-        selectionAt: observedAt,
-        observedAt,
-        contextCheckedAt: observedAt,
-        sourceUpdatedAt: null,
-        sourceCalculationFreshness: 'unknown',
-        hiddenUntil: null,
-        published: true,
-        coverage: {
-          fetch: 'complete',
-          atomic: false,
-          allRepositoryImages: false,
-          selection: 'complete',
-          architectureExpectations: 'unverified',
-          grades: 'partial',
-          candidatePages: 1,
-          candidateRecords: 1,
-        },
-        issues: [],
-        contentHash: '',
-        streams,
-        images: [unknown],
-        counts: countChiImages([unknown]),
+        ...snapshot,
+        images: [{ ...unknown, activeTags: ['9.4', '9.4.1'] }],
       }),
-    ).toMatch(/^[a-f0-9]{64}$/);
+    ).not.toBe(hash);
   });
 });

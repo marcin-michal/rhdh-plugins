@@ -151,6 +151,10 @@ describe('chi-source-contract exact minimal CHI GraphQL operations', () => {
           expect(request.query).toContain(
             'freshness_grades @include(if: $includeGrades)',
           );
+          expect(request.query).toContain('published_date push_date');
+          expect(request.query).toContain(
+            'manifest_schema2_digest manifest_list_digest',
+          );
           return true;
         },
       })
@@ -160,11 +164,40 @@ describe('chi-source-contract exact minimal CHI GraphQL operations', () => {
           _id: imageId,
           architecture: 'amd64',
           deleted: false,
-          repositories: [],
+          repositories: [
+            {
+              registry: 'registry.redhat.io',
+              repository: 'example/component',
+              published: true,
+              published_date: '2026-10-12T01:00:00Z',
+              push_date: '2026-10-12T00:00:00Z',
+              manifest_schema2_digest: `sha256:${'a'.repeat(64)}`,
+              manifest_list_digest: null,
+              tags: [
+                {
+                  name: '9.4-extended',
+                  added_date: '2026-10-12T00:00:00Z',
+                  removed_date: null,
+                },
+              ],
+            },
+          ],
         }),
       );
     await expect(
       client.getSelectedImageChi(imageId, { includeGrades: false }),
-    ).resolves.toMatchObject({ state: 'found', data: { _id: imageId } });
+    ).resolves.toMatchObject({
+      state: 'found',
+      data: {
+        _id: imageId,
+        repositories: [
+          {
+            published_date: '2026-10-12T01:00:00Z',
+            manifest_schema2_digest: `sha256:${'a'.repeat(64)}`,
+            manifest_list_digest: null,
+          },
+        ],
+      },
+    });
   });
 });

@@ -466,6 +466,12 @@ export type RepositoryPageRequest = PageRequest;
 export interface SelectedImageChi extends ChiCandidate {
   // (undocumented)
   freshness_grades?: unknown;
+  // (undocumented)
+  repositories: readonly (ChiCandidate['repositories'][number] & {
+    published_date: string | null;
+    manifest_schema2_digest: string | null;
+    manifest_list_digest: string | null;
+  })[];
 }
 
 // @public

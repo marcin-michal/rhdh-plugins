@@ -56,7 +56,16 @@ const candidate = (id: string, pushDate: string): ChiCandidate => ({
 const selected = (
   value: ChiCandidate,
   freshness_grades: unknown = [],
-): SelectedImageChi => ({ ...value, freshness_grades });
+): SelectedImageChi => ({
+  ...value,
+  repositories: value.repositories.map(association => ({
+    ...association,
+    published_date: null,
+    manifest_schema2_digest: null,
+    manifest_list_digest: null,
+  })),
+  freshness_grades,
+});
 
 const harness = (pages: ChiCandidate[][]) => {
   const contexts = [context(), context()];
@@ -99,6 +108,48 @@ describe('chi-candidate-keyset chi-winner-revalidation repository reader', () =>
     const old = candidate(oldImage, '2026-10-10T00:00:00Z');
     const latest = candidate(newImage, '2026-10-12T00:00:00Z');
     const h = harness([[old, latest], []]);
+    const manifestDigest = `sha256:${'a'.repeat(64)}`;
+    const manifestListDigest = `sha256:${'b'.repeat(64)}`;
+    const selectedLatest = selected(latest);
+    const association = {
+      ...selectedLatest.repositories[0],
+      published_date: '2026-10-12T01:00:00Z',
+      manifest_schema2_digest: manifestDigest,
+      manifest_list_digest: manifestListDigest,
+      tags: [
+        ...selectedLatest.repositories[0].tags,
+        {
+          name: '9.4.1',
+          added_date: '2026-10-12T00:00:00Z',
+          removed_date: null,
+        },
+        {
+          name: 'removed',
+          added_date: '2026-10-12T00:00:00Z',
+          removed_date: '2026-10-13T00:00:00Z',
+        },
+      ],
+    };
+    jest.mocked(h.client.getSelectedImageChi).mockResolvedValue({
+      state: 'found',
+      data: {
+        ...selectedLatest,
+        repositories: [
+          association,
+          {
+            ...association,
+            registry: 'another.registry.example',
+            tags: [
+              {
+                name: 'unrelated',
+                added_date: '2026-10-12T00:00:00Z',
+                removed_date: null,
+              },
+            ],
+          },
+        ],
+      },
+    });
     const result = await h.reader.readRepository(source, {});
 
     expect(result).toMatchObject({
@@ -107,6 +158,14 @@ describe('chi-candidate-keyset chi-winner-revalidation repository reader', () =>
         population: 'latest-published-per-stream-architecture',
         coverage: { candidatePages: 2, candidateRecords: 2 },
         counts: { total: 1, byGrade: { unknown: 1 } },
+        images: [
+          {
+            activeTags: ['9.4-extended', '9.4.1'],
+            manifestDigest,
+            manifestListDigest,
+            publishedAt: '2026-10-12T01:00:00.000Z',
+          },
+        ],
       },
     });
     expect(jest.mocked(h.client.getSelectedImageChi)).toHaveBeenCalledTimes(1);

@@ -17,6 +17,7 @@
 import type { SourceKey } from '@red-hat-developer-hub/backstage-plugin-product-portfolio-common';
 import type {
   ChiFailureCode,
+  ChiImageMetadata,
   RepositoryChiSnapshot,
   VendorPolicy,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
@@ -29,6 +30,7 @@ import {
 } from './chiNormalization';
 import {
   ChiSelectionAccumulator,
+  timestamp,
   type ChiSelectionOptions,
   type ChiSelectionWinner,
 } from './chiSelection';
@@ -53,6 +55,64 @@ class ChiReadFailure extends Error {
     super(`pyxis-chi-${code}`);
   }
 }
+
+const oneValue = (values: readonly (string | null)[]): string | null => {
+  const distinct = new Set(values.filter((value): value is string => !!value));
+  return distinct.size === 1 ? [...distinct][0] : null;
+};
+
+const selectedImageMetadata = (
+  winner: ChiSelectionWinner,
+  image: SelectedImageChi,
+  options: ChiSelectionOptions,
+): ChiImageMetadata => {
+  const activeTag = (
+    tag: SelectedImageChi['repositories'][number]['tags'][number],
+  ) => {
+    const added = timestamp(tag.added_date);
+    return (
+      tag.removed_date === null &&
+      added !== null &&
+      added <= options.selectionAt
+    );
+  };
+  const associations = image.repositories.filter(
+    association =>
+      association.registry === options.registry &&
+      association.repository === options.repository &&
+      association.published === true,
+  );
+  const winners = associations.filter(association =>
+    winner.selectedIn.some(
+      stream =>
+        timestamp(association.push_date) === winner.pushDates[stream] &&
+        association.tags.some(tag => tag.name === stream && activeTag(tag)),
+    ),
+  );
+
+  if (winners.length === 0) {
+    throw new ChiReadFailure('selection-changed');
+  }
+
+  return {
+    activeTags: [
+      ...new Set(
+        associations.flatMap(association =>
+          association.tags.filter(activeTag).map(tag => tag.name),
+        ),
+      ),
+    ].sort(),
+    manifestDigest: oneValue(
+      winners.map(association => association.manifest_schema2_digest),
+    ),
+    manifestListDigest: oneValue(
+      winners.map(association => association.manifest_list_digest),
+    ),
+    publishedAt: oneValue(
+      winners.map(association => timestamp(association.published_date)),
+    ),
+  };
+};
 
 const normalizeTags = (
   context: RepositoryChiContext,
@@ -341,15 +401,19 @@ export class RepositoryChiReader implements PyxisChiReadPort {
         });
       }
 
-      const images = plan.winners.map(winner =>
-        normalizeChiImage(
-          winner,
-          selected.get(winner.imageId)?.freshness_grades,
+      const images = plan.winners.map(winner => {
+        const image = selected.get(winner.imageId)!;
+        return normalizeChiImage(
+          {
+            ...winner,
+            ...selectedImageMetadata(winner, image, selectionOptions),
+          },
+          image.freshness_grades,
           observedAt,
           finalHidden,
           this.config.maxPeriodsPerImage,
-        ),
-      );
+        );
+      });
 
       const streams = summarizeChiStreams(plan, images);
       const expectationsVerified =

@@ -21,6 +21,7 @@ import type {
   ChiCounts,
   ChiDrop,
   ChiGrade,
+  ChiImageMetadata,
   ChiImageObservation,
   ChiPeriod,
   ChiStreamSelection,
@@ -124,12 +125,16 @@ const attentionFor = (
 };
 
 const inconsistentImage = (
-  winner: ChiSelectionWinner,
+  winner: ChiSelectionWinner & ChiImageMetadata,
 ): ChiImageObservation => ({
   imageId: winner.imageId,
   architecture: winner.architecture,
   selectedIn: winner.selectedIn,
   pushDates: winner.pushDates,
+  activeTags: winner.activeTags,
+  manifestDigest: winner.manifestDigest,
+  manifestListDigest: winner.manifestListDigest,
+  publishedAt: winner.publishedAt,
   currentGrade: null,
   gradeOrigin: 'normalized-source-periods',
   gradeQuality: 'inconsistent',
@@ -141,7 +146,7 @@ const inconsistentImage = (
 
 /** Normalize source periods and evaluate them at one fixed clock. @internal */
 export function normalizeChiImage(
-  winner: ChiSelectionWinner,
+  winner: ChiSelectionWinner & ChiImageMetadata,
   raw: unknown,
   observedAt: string,
   hidden: boolean,
@@ -261,6 +266,10 @@ export function normalizeChiImage(
     architecture: winner.architecture,
     selectedIn: winner.selectedIn,
     pushDates: winner.pushDates,
+    activeTags: winner.activeTags,
+    manifestDigest: winner.manifestDigest,
+    manifestListDigest: winner.manifestListDigest,
+    publishedAt: winner.publishedAt,
     currentGrade: current?.grade ?? null,
     gradeOrigin: 'normalized-source-periods',
     gradeQuality: current ? 'known' : 'unknown',
@@ -340,6 +349,10 @@ const canonicalEvidence = (snapshot: RepositoryChiSnapshot) => ({
     architecture: image.architecture,
     selectedIn: image.selectedIn,
     pushDates: image.pushDates,
+    activeTags: image.activeTags,
+    manifestDigest: image.manifestDigest,
+    manifestListDigest: image.manifestListDigest,
+    publishedAt: image.publishedAt,
     periods: image.periods,
     periodEvidence: image.periodEvidence,
   })),

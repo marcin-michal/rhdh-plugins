@@ -69,7 +69,19 @@ export interface ChiDrop {
 }
 
 /** @public */
-export interface ChiImageObservation {
+export interface ChiImageMetadata {
+  /** Active tags for this image in the selected repository at selection time. */
+  activeTags: readonly string[];
+  /** Architecture-specific manifest digest from the winning association. */
+  manifestDigest: string | null;
+  /** Multi-architecture manifest-list digest, when Pyxis provides one. */
+  manifestListDigest: string | null;
+  /** Publication date shared by the winning associations, when unambiguous. */
+  publishedAt: string | null;
+}
+
+/** @public */
+export interface ChiImageObservation extends ChiImageMetadata {
   imageId: string;
   architecture: string;
   selectedIn: readonly string[];

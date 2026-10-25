@@ -104,7 +104,19 @@ export type ChiFailureCode =
 export type ChiGrade = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
 
 // @public (undocumented)
-export interface ChiImageObservation {
+export interface ChiImageMetadata {
+  // (undocumented)
+  activeTags: readonly string[];
+  // (undocumented)
+  manifestDigest: string | null;
+  // (undocumented)
+  manifestListDigest: string | null;
+  // (undocumented)
+  publishedAt: string | null;
+}
+
+// @public (undocumented)
+export interface ChiImageObservation extends ChiImageMetadata {
   // (undocumented)
   architecture: string;
   // (undocumented)

@@ -119,6 +119,11 @@ export interface ChiCandidatePage {
 
 /** Minimal selected-image identity plus optional raw grade periods. @public */
 export interface SelectedImageChi extends ChiCandidate {
+  repositories: readonly (ChiCandidate['repositories'][number] & {
+    published_date: string | null;
+    manifest_schema2_digest: string | null;
+    manifest_list_digest: string | null;
+  })[];
   freshness_grades?: unknown;
 }
 
