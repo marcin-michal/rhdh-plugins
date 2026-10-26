@@ -118,7 +118,7 @@ describe('portfolio NFS wiring', () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          'No matching entries. Adjust the search or choose another type.',
+          'No matching entries. Adjust the search or choose another kind.',
         ),
       ).toBeInTheDocument(),
     );
@@ -147,12 +147,10 @@ describe('portfolio NFS wiring', () => {
     });
 
     await waitFor(() => expect(getEntities).toHaveBeenCalled());
-    expect(
-      screen.getByText('Loading product portfolio entries…'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Loading product listings…')).toBeInTheDocument();
     expect(
       screen.queryByText(
-        'No matching entries. Adjust the search or choose another type.',
+        'No matching entries. Adjust the search or choose another kind.',
       ),
     ).not.toBeInTheDocument();
 
@@ -176,15 +174,20 @@ describe('portfolio NFS wiring', () => {
     });
 
     expect(await screen.findByText('Listing 1')).toBeInTheDocument();
-    expect(screen.getByText('Repository 1')).toBeInTheDocument();
-    expect(screen.getByText('Team 1')).toBeInTheDocument();
+    expect(screen.queryByText('Repository 1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Team 1')).not.toBeInTheDocument();
     expect(screen.queryByText('User 1')).not.toBeInTheDocument();
 
-    await user.click(screen.getByText('Repositories'));
+    expect(
+      screen.queryByRole('radio', { name: /All entries/ }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: /Repositories/ }));
     await waitFor(() =>
       expect(screen.queryByText('Listing 1')).not.toBeInTheDocument(),
     );
     expect(screen.getByText('Repository 1')).toBeInTheDocument();
+    expect(screen.queryByText('Team 1')).not.toBeInTheDocument();
 
     await user.type(
       screen.getByRole('textbox', { name: 'Search by name' }),
@@ -194,5 +197,10 @@ describe('portfolio NFS wiring', () => {
       expect(screen.queryByText('Repository 2')).not.toBeInTheDocument(),
     );
     expect(screen.getByText('Repository 1')).toBeInTheDocument();
+
+    await user.clear(screen.getByRole('textbox', { name: 'Search by name' }));
+    await user.click(screen.getByRole('radio', { name: /Teams/ }));
+    expect(await screen.findByText('Team 1')).toBeInTheDocument();
+    expect(screen.queryByText('Repository 1')).not.toBeInTheDocument();
   });
 });

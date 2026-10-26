@@ -58,11 +58,13 @@ export function PortfolioToolbar({
   onQueryChange,
   onClearFilters,
 }: PortfolioToolbarProps) {
+  const selectedLabel =
+    options
+      .find(option => option.id === selectedKind)
+      ?.label.toLocaleLowerCase('en-US') ?? 'entries';
   const resultSummary = loading
-    ? 'Loading product portfolio entries…'
-    : `Showing ${currentCount} of ${totalCount} ${
-        totalCount === 1 ? 'entry' : 'entries'
-      }`;
+    ? `Loading ${selectedLabel}…`
+    : `Showing ${currentCount} of ${totalCount} ${selectedLabel}`;
 
   return (
     <Card role="search" aria-label="Product portfolio search">
@@ -110,7 +112,7 @@ export function PortfolioToolbar({
               <Box width="100%" minWidth="0">
                 <TextField
                   label="Search by name"
-                  placeholder="Search listings, repositories, or teams"
+                  placeholder={`Search ${selectedLabel}`}
                   value={query}
                   onChange={onQueryChange}
                   size="small"

@@ -23,34 +23,38 @@ import {
   type ColumnConfig,
   type TableItem,
 } from '@backstage/ui';
-import { readEntity } from '../model/entities';
-import { publicationState } from '../model/publicationState';
+import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import { readEntity, sourceKey } from '../model/entities';
+import {
+  publicationState,
+  publicationStateLabel,
+} from '../model/publicationState';
 import { Timestamp } from '../components/shared/Timestamp';
+import type { PortfolioCategory } from './filterState';
+
+export interface PortfolioTeam {
+  entity: Entity;
+  ref: string;
+  label: string;
+}
+
+interface PortfolioTeamLink {
+  ref: string;
+  label: string;
+  href: string;
+}
 
 export interface PortfolioTableRow extends TableItem {
   entity: Entity;
   name: string;
   href: string;
-  type: string;
   description: string;
-  teams: { ref: string; label: string; href: string }[];
-  sourceStatus: string;
+  repositoryPath?: string;
+  teams: PortfolioTeamLink[];
+  repositoryCount?: number;
+  memberCount?: number;
+  publishedState: string;
   updatedAt?: string;
-}
-
-function typeLabel(category?: string): string {
-  switch (category) {
-    case 'listing':
-      return 'Product listing';
-    case 'repository':
-      return 'Repository';
-    case 'team':
-      return 'Team';
-    case 'user':
-      return 'User';
-    default:
-      return 'Unknown';
-  }
 }
 
 function sourceTeamId(entity: Entity): string | undefined {
@@ -69,97 +73,172 @@ function sourceTeamId(entity: Entity): string | undefined {
 
 export function createPortfolioRows(
   entities: Entity[],
-  teamLabels: ReadonlyMap<string, string>,
-  getEntityHref: (entityOrRef: Entity | string) => string,
+  teamDirectory: ReadonlyMap<string, PortfolioTeam>,
+  getEntityHref: (entity: Entity) => string,
 ): PortfolioTableRow[] {
   return entities.map(entity => {
     const model = readEntity(entity).value;
-    const teamId = sourceTeamId(entity);
-    const teams = (entity.relations ?? [])
+    const teamKeys = (entity.relations ?? [])
       .filter(relation => ['ownedBy', 'memberOf'].includes(relation.type))
-      .map(relation => {
-        const fallbackLabel =
-          teamId ?? relation.targetRef.split('/').pop() ?? relation.targetRef;
+      .map(relation => relation.targetRef);
+    const teamId = sourceTeamId(entity);
+    if (model && teamId) {
+      teamKeys.push(
+        sourceKey({
+          sourceInstance: model.projection.source.sourceInstance,
+          kind: 'team',
+          id: teamId,
+        }),
+      );
+    }
 
-        return {
-          ref: relation.targetRef,
-          label: teamLabels.get(relation.targetRef) ?? fallbackLabel,
-          href: getEntityHref(relation.targetRef),
-        };
-      });
-    const state = model ? publicationState(model) : 'unknown';
+    const teamsByRef = new Map<string, PortfolioTeam>();
+    for (const key of new Set(teamKeys)) {
+      const team = teamDirectory.get(key);
+      if (team) {
+        teamsByRef.set(team.ref, team);
+      }
+    }
+
+    const repositoryCount =
+      model?.category === 'listing'
+        ? new Set(
+            (entity.relations ?? [])
+              .filter(
+                relation => relation.type === PYXIS_RELATIONS.hasRepository,
+              )
+              .map(relation => relation.targetRef),
+          ).size
+        : undefined;
 
     return {
       id: entity.metadata.uid ?? stringifyEntityRef(entity),
       entity,
       name: model?.title ?? entity.metadata.title ?? entity.metadata.name,
       href: getEntityHref(entity),
-      type: typeLabel(model?.category),
       description: model?.description ?? '',
-      teams,
-      sourceStatus: state === 'not-applicable' ? '—' : state.replace('-', ' '),
+      repositoryPath: model?.path,
+      teams: [...teamsByRef.values()].map(team => ({
+        ref: team.ref,
+        label: team.label,
+        href: getEntityHref(team.entity),
+      })),
+      repositoryCount,
+      memberCount:
+        model?.category === 'team'
+          ? model.projection.roster?.members.length
+          : undefined,
+      publishedState: model
+        ? publicationStateLabel(publicationState(model))
+        : 'Unknown',
       updatedAt: model?.updatedAt,
     };
   });
 }
 
-export const portfolioColumns: ColumnConfig<PortfolioTableRow>[] = [
-  {
-    id: 'name',
-    label: 'Name',
-    width: '3fr',
-    isSortable: true,
-    isRowHeader: true,
-    cell: row => <CellText title={row.name} href={row.href} />,
-  },
-  {
-    id: 'type',
-    label: 'Type',
-    width: '1fr',
-    isSortable: true,
-    cell: row => <CellText title={row.type} />,
-  },
-  {
-    id: 'description',
-    label: 'Description',
-    width: '2fr',
-    cell: row => <CellText title={row.description || '—'} color="secondary" />,
-  },
-  {
-    id: 'team',
-    label: 'Team',
-    width: '2fr',
-    cell: row => {
-      if (row.teams.length === 0) {
-        return <CellText title="—" color="secondary" />;
-      }
-      return (
-        <Cell>
-          <Flex direction="column" gap="1">
-            {row.teams.map(team => (
-              <Link key={team.ref} href={team.href}>
-                {team.label}
-              </Link>
-            ))}
-          </Flex>
-        </Cell>
-      );
-    },
-  },
-  {
-    id: 'sourceStatus',
-    label: 'Source status',
-    width: '1fr',
-    cell: row => <CellText title={row.sourceStatus} />,
-  },
-  {
-    id: 'updatedAt',
-    label: 'Last updated',
-    width: '1fr',
-    cell: row => (
+const nameColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'name',
+  label: 'Name',
+  width: '2fr',
+  isSortable: true,
+  isRowHeader: true,
+  cell: row => <CellText title={row.name} href={row.href} />,
+};
+
+const shortDescriptionColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'description',
+  label: 'Short description',
+  width: '3fr',
+  cell: row => <CellText title={row.description || '—'} color="secondary" />,
+};
+
+const teamColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'team',
+  label: 'Team',
+  width: '2fr',
+  cell: row => {
+    if (row.teams.length === 0) {
+      return <CellText title="—" color="secondary" />;
+    }
+    return (
       <Cell>
-        <Timestamp value={row.updatedAt} />
+        <Flex direction="column" gap="1">
+          {row.teams.map(team => (
+            <Link key={team.ref} href={team.href}>
+              {team.label}
+            </Link>
+          ))}
+        </Flex>
       </Cell>
-    ),
+    );
   },
-];
+};
+
+const repositoryCountColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'repositoryCount',
+  label: 'Repositories',
+  width: '1fr',
+  cell: row => (
+    <Cell style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+      {row.repositoryCount?.toLocaleString() ?? '—'}
+    </Cell>
+  ),
+};
+
+const publishedStateColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'publishedState',
+  label: 'Published state',
+  width: '1fr',
+  cell: row => <CellText title={row.publishedState} />,
+};
+
+const lastUpdatedColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'updatedAt',
+  label: 'Last updated',
+  width: '1fr',
+  cell: row => (
+    <Cell>
+      <Timestamp value={row.updatedAt} />
+    </Cell>
+  ),
+};
+
+const repositoryPathColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'repositoryPath',
+  label: 'Registry / repository',
+  width: '3fr',
+  cell: row => <CellText title={row.repositoryPath || '—'} />,
+};
+
+const memberCountColumn: ColumnConfig<PortfolioTableRow> = {
+  id: 'memberCount',
+  label: 'Members',
+  width: '0.25fr',
+  cell: row => (
+    <Cell style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+      {row.memberCount?.toLocaleString() ?? '—'}
+    </Cell>
+  ),
+};
+
+export const portfolioColumnsByKind: Record<
+  PortfolioCategory,
+  ColumnConfig<PortfolioTableRow>[]
+> = {
+  listing: [
+    nameColumn,
+    shortDescriptionColumn,
+    teamColumn,
+    repositoryCountColumn,
+    publishedStateColumn,
+    lastUpdatedColumn,
+  ],
+  repository: [
+    nameColumn,
+    repositoryPathColumn,
+    teamColumn,
+    publishedStateColumn,
+    lastUpdatedColumn,
+  ],
+  team: [nameColumn, memberCountColumn, lastUpdatedColumn],
+};

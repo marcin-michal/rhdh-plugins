@@ -32,12 +32,18 @@ import {
   useTable,
 } from '@backstage/ui';
 import { sortEntities } from '../model/entities';
-import { createPortfolioRows, portfolioColumns } from './columns';
-import type { PortfolioTableRow } from './columns';
+import {
+  createPortfolioRows,
+  portfolioColumnsByKind,
+  type PortfolioTeam,
+  type PortfolioTableRow,
+} from './columns';
+import type { PortfolioCategory } from './filterState';
 
 interface PortfolioTableProps {
+  kind: PortfolioCategory;
   entities: Entity[];
-  teamLabels: ReadonlyMap<string, string>;
+  teamDirectory: ReadonlyMap<string, PortfolioTeam>;
   title: string;
   loading: boolean;
 }
@@ -46,34 +52,30 @@ function sortPortfolioRows(
   rows: PortfolioTableRow[],
   sort: SortDescriptor,
 ): PortfolioTableRow[] {
-  if (sort.column !== 'name' && sort.column !== 'type') {
+  if (sort.column !== 'name') {
     return rows;
   }
 
   const direction = sort.direction === 'descending' ? -1 : 1;
   return [...rows].sort((first, second) => {
-    const comparison =
-      sort.column === 'name'
-        ? sortEntities(first.entity, second.entity)
-        : first.type.localeCompare(second.type) ||
-          sortEntities(first.entity, second.entity);
-    return direction * comparison;
+    return direction * sortEntities(first.entity, second.entity);
   });
 }
 
 export function PortfolioTable({
+  kind,
   entities,
-  teamLabels,
+  teamDirectory,
   title,
   loading,
 }: PortfolioTableProps) {
   const entityRoute = useRouteRef(entityRouteRef);
   const rows = useMemo(
     () =>
-      createPortfolioRows(entities, teamLabels, entityOrRef =>
-        entityRoute(entityRouteParams(entityOrRef)),
+      createPortfolioRows(entities, teamDirectory, entity =>
+        entityRoute(entityRouteParams(entity)),
       ),
-    [entities, entityRoute, teamLabels],
+    [entities, entityRoute, teamDirectory],
   );
   const { tableProps } = useTable({
     mode: 'complete',
@@ -90,7 +92,7 @@ export function PortfolioTable({
     <Box p="8" role="status">
       <Flex align="center" justify="center">
         <Text as="p" variant="body-medium" color="secondary">
-          No matching entries. Adjust the search or choose another type.
+          No matching entries. Adjust the search or choose another kind.
         </Text>
       </Flex>
     </Box>
@@ -105,7 +107,7 @@ export function PortfolioTable({
           </Text>
           <Table
             {...tableProps}
-            columnConfig={portfolioColumns}
+            columnConfig={portfolioColumnsByKind[kind]}
             data={
               loading && tableProps.data?.length === 0
                 ? undefined

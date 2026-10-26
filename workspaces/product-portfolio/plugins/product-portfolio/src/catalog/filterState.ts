@@ -19,7 +19,7 @@ export type PortfolioCategory = (typeof portfolioCategories)[number];
 
 export interface FilterState {
   q: string;
-  categories: PortfolioCategory[];
+  category: PortfolioCategory;
 }
 
 export function isPortfolioCategory(value: string): value is PortfolioCategory {
@@ -29,27 +29,26 @@ export function isPortfolioCategory(value: string): value is PortfolioCategory {
 export function parseFilterState(search: string): FilterState {
   const params = new URLSearchParams(search);
   const selected = (params.get('categories') ?? '').split(',');
+  const [category] = selected;
 
   return {
     q: params.get('q')?.trim() ?? '',
-    categories: portfolioCategories.filter(category =>
-      selected.includes(category),
-    ),
+    category:
+      selected.length === 1 && category && isPortfolioCategory(category)
+        ? category
+        : 'listing',
   };
 }
 
 export function serializeFilterState(state: FilterState): string {
   const params = new URLSearchParams();
   const query = state.q.trim();
-  const selected = portfolioCategories.filter(category =>
-    state.categories.includes(category),
-  );
 
   if (query) {
     params.set('q', query);
   }
-  if (selected.length) {
-    params.set('categories', selected.join(','));
+  if (state.category !== 'listing') {
+    params.set('categories', state.category);
   }
 
   return params.toString();

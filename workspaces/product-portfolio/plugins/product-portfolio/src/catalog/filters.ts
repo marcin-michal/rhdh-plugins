@@ -46,10 +46,7 @@ export class PortfolioFilter implements EntityFilter {
       return false;
     }
 
-    if (
-      this.state.categories.length &&
-      !this.state.categories.includes(m.category)
-    ) {
+    if (this.state.category !== m.category) {
       return false;
     }
 

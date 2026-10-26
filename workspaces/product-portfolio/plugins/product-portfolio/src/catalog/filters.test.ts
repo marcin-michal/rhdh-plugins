@@ -37,18 +37,25 @@ describe('portfolio filters', () => {
   });
 
   it('normalizes invalid URL values and round trips category and name filters', () => {
+    expect(base).toEqual({ q: '', category: 'listing' });
     expect(parseFilterState('?categories=bad&q=%20%20')).toEqual(base);
-    const state = parseFilterState('?categories=repository,listing&q=registry');
+    const state = parseFilterState('?categories=repository&q=registry');
     expect(parseFilterState(serializeFilterState(state))).toEqual(state);
+    expect(parseFilterState('?categories=repository,team&q=registry')).toEqual({
+      q: 'registry',
+      category: 'listing',
+    });
   });
 
   it.each([
-    'Listing 1',
-    'LISTING-1',
-    '000000000000000000000001',
-    'registry.redhat.io/portfolio',
-  ])('searches title, name, id, and repository path: %s', q => {
-    expect(run(`?q=${encodeURIComponent(q)}`).length).toBeGreaterThan(0);
+    ['Listing 1', 'listing'],
+    ['LISTING-1', 'listing'],
+    ['000000000000000000000001', 'listing'],
+    ['registry.redhat.io/portfolio', 'repository'],
+  ])('searches title, name, id, and repository path: %s', (q, category) => {
+    expect(
+      run(`?categories=${category}&q=${encodeURIComponent(q)}`).length,
+    ).toBeGreaterThan(0);
   });
 
   it('filters by kind and name while keeping the list to portfolio entities', () => {
@@ -59,6 +66,10 @@ describe('portfolio filters', () => {
     ).toBe(true);
     expect(run('?categories=listing&q=listing-1')).toEqual([
       'resource:pyxis/listing-1',
+    ]);
+    expect(run('')).toEqual([
+      'resource:pyxis/listing-1',
+      'resource:pyxis/listing-2',
     ]);
     expect(run('')).not.toContain('user:pyxis/user-1');
   });
