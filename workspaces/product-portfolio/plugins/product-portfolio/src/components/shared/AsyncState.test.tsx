@@ -98,6 +98,25 @@ describe('AsyncState', () => {
     expect(screen.getByText('Resolved content')).toBeInTheDocument();
   });
 
+  it('can hide the partial-data notice while keeping resolved content visible', async () => {
+    await renderInTestApp(
+      <AsyncState
+        state={state({
+          partial: true,
+          entities: [fixtureEntity('repository')],
+        })}
+        showPartialWarning={false}
+      >
+        <p>Resolved content</p>
+      </AsyncState>,
+    );
+
+    expect(
+      screen.queryByText('Some related catalog data is unavailable.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Resolved content')).toBeInTheDocument();
+  });
+
   it('renders children when related entities are available', async () => {
     await renderInTestApp(
       <AsyncState state={state({ entities: [fixtureEntity('repository')] })}>

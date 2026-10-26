@@ -23,6 +23,7 @@ export function ChiObservationMetadata({
   state,
   repositoryCount,
   summary,
+  showObservationStatus = true,
 }: {
   state: RelatedState;
   repositoryCount: number;
@@ -30,6 +31,7 @@ export function ChiObservationMetadata({
     PortfolioChiSummary,
     'aggregate' | 'snapshotsUsed' | 'latestObservationAt'
   >;
+  showObservationStatus?: boolean;
 }) {
   let observationStatus = 'Incomplete';
   let observationColor: TextColorStatus = 'warning';
@@ -47,17 +49,22 @@ export function ChiObservationMetadata({
   }
 
   return (
-    <Grid.Root columns={{ initial: '1', sm: '2' }} gap="3">
-      <Grid.Item>
-        <Flex direction="column" gap="1">
-          <Text as="p" variant="body-small" color="secondary">
-            Observation status
-          </Text>
-          <Text as="p" variant="body-medium" color={observationColor}>
-            {observationStatus}
-          </Text>
-        </Flex>
-      </Grid.Item>
+    <Grid.Root
+      columns={{ initial: '1', sm: showObservationStatus ? '2' : '1' }}
+      gap="3"
+    >
+      {showObservationStatus && (
+        <Grid.Item>
+          <Flex direction="column" gap="1">
+            <Text as="p" variant="body-small" color="secondary">
+              Observation status
+            </Text>
+            <Text as="p" variant="body-medium" color={observationColor}>
+              {observationStatus}
+            </Text>
+          </Flex>
+        </Grid.Item>
+      )}
       <Grid.Item>
         <Flex direction="column" gap="1">
           <Text as="p" variant="body-small" color="secondary">

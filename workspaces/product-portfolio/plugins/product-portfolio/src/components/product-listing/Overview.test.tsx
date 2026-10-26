@@ -25,7 +25,11 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router-dom';
 import type { PyxisProjection } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { fixtureEntity, portfolioFixtures } from '../../testUtils/fixtures';
+import {
+  fixtureEntity,
+  observedAt,
+  portfolioFixtures,
+} from '../../testUtils/fixtures';
 import { ListingOverview } from './Overview';
 
 function CurrentLocation() {
@@ -75,9 +79,21 @@ describe('ListingOverview', () => {
         (listing.spec!.pyxis as unknown as PyxisProjection).source.id,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText('Observation status')).toBeInTheDocument();
+    expect(screen.getByText('Latest grade observation')).toBeInTheDocument();
+    expect(screen.queryByText('Observation status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Incomplete')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'These grade counts are based on incomplete repository observations.',
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Some related catalog data is unavailable.'),
+    ).not.toBeInTheDocument();
+    expect(
+      document.querySelector(`time[datetime="${observedAt}"]`),
+    ).toBeInTheDocument();
     expect(await screen.findByText('A', { exact: true })).toBeInTheDocument();
-    expect(screen.getByText('Incomplete')).toBeInTheDocument();
     expect(getEntitiesByRefs).toHaveBeenCalled();
   });
 

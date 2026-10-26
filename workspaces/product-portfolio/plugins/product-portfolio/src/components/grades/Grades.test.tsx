@@ -108,11 +108,19 @@ describe('Grades', () => {
       screen.queryByRole('link', { name: 'portfolio/repository-1' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Container Health Index')).toBeInTheDocument();
-    expect(screen.getByText('Incomplete')).toBeInTheDocument();
+    expect(screen.getByText('Latest grade observation')).toBeInTheDocument();
+    expect(screen.queryByText('Observation status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Incomplete')).not.toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.queryByText(
         'These grade counts are based on incomplete repository observations.',
       ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Some related catalog data is unavailable.'),
+    ).not.toBeInTheDocument();
+    expect(
+      document.querySelector(`time[datetime="${observedAt}"]`),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('columnheader', { name: 'Name' }),
@@ -244,7 +252,12 @@ describe('Grades', () => {
       await screen.findByRole('row', { name: /Grade A/ }),
     ).toBeInTheDocument();
     expect(screen.getByText('Container Health Index')).toBeInTheDocument();
-    expect(screen.getByText('Incomplete')).toBeInTheDocument();
+    expect(screen.getByText('Latest grade observation')).toBeInTheDocument();
+    expect(screen.queryByText('Observation status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Incomplete')).not.toBeInTheDocument();
+    expect(
+      document.querySelector(`time[datetime="${observedAt}"]`),
+    ).toBeInTheDocument();
     expect(getEntitiesByRefs).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('row', { name: /Grade A/ }));

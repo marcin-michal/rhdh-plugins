@@ -52,7 +52,6 @@ import { AsyncState } from '../shared/AsyncState';
 import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
 import { DetailCard } from '../shared/DetailCard';
 import { Timestamp } from '../shared/Timestamp';
-import { QualityNotice } from '../shared/QualityNotice';
 import { gradeCellStyle, gradeToneForId } from '../shared/gradeStyles';
 
 type GradeSectionId = 'a' | 'a-with-drop' | 'b' | 'c' | 'd' | 'e' | 'f';
@@ -475,6 +474,7 @@ function GradesContent({
           state={related}
           repositoryCount={repositories.length}
           summary={summary}
+          showObservationStatus={false}
         />
 
         <Flex direction="column" gap="1">
@@ -485,7 +485,7 @@ function GradesContent({
           </Text>
         </Flex>
 
-        <AsyncState state={related} empty={empty}>
+        <AsyncState state={related} empty={empty} showPartialWarning={false}>
           <Flex direction="column" gap="3">
             {sections.length ? (
               <Table
@@ -507,9 +507,6 @@ function GradesContent({
               <Text as="p" color="secondary">
                 No images with a known grade are available.
               </Text>
-            )}
-            {(!summary.aggregate.complete || related.partial) && (
-              <QualityNotice message="These grade counts are based on incomplete repository observations." />
             )}
           </Flex>
         </AsyncState>

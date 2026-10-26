@@ -24,10 +24,12 @@ export function AsyncState({
   state,
   children,
   empty = 'No related catalog entities.',
+  showPartialWarning = true,
 }: {
   state: RelatedState;
   children: ReactNode;
   empty?: string;
+  showPartialWarning?: boolean;
 }) {
   if (state.loading)
     return (
@@ -46,7 +48,7 @@ export function AsyncState({
 
   return (
     <>
-      {state.partial && (
+      {showPartialWarning && state.partial && (
         <QualityNotice message="Some related catalog data is unavailable." />
       )}
       {state.entities.length ? children : <Text as="p">{empty}</Text>}

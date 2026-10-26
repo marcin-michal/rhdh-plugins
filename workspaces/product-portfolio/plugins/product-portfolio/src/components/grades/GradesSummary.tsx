@@ -28,7 +28,6 @@ import { aggregatePortfolioChi } from '../../model/portfolioChi';
 import { readEntity } from '../../model/entities';
 import { AsyncState } from '../shared/AsyncState';
 import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
-import { QualityNotice } from '../shared/QualityNotice';
 import { DetailCard } from '../shared/DetailCard';
 import {
   gradeCellStyle,
@@ -117,9 +116,14 @@ export function GradesSummary({
           state={state}
           repositoryCount={repositories.length}
           summary={{ aggregate, snapshotsUsed, latestObservationAt }}
+          showObservationStatus={false}
         />
 
-        <AsyncState state={state} empty="No repository observations available.">
+        <AsyncState
+          state={state}
+          empty="No repository observations available."
+          showPartialWarning={false}
+        >
           <Flex direction="column" gap="3">
             {rows.length ? (
               <Table
@@ -136,9 +140,6 @@ export function GradesSummary({
               <Text as="p" color="secondary">
                 No images with a known grade are available.
               </Text>
-            )}
-            {(!aggregate.complete || state.partial) && (
-              <QualityNotice message="These grade counts are based on incomplete repository observations." />
             )}
           </Flex>
         </AsyncState>
