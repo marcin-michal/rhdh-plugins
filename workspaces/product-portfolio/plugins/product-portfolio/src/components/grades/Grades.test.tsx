@@ -25,37 +25,39 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router-dom';
 import {
+  fixtureEntity,
   fixtureHealth,
   observedAt,
   portfolioFixtures,
-} from '../testUtils/fixtures';
-import { ListingGrades } from './ListingGrades';
+  teamPortfolioFixtures,
+} from '../../testUtils/fixtures';
+import { Grades } from './Grades';
 
 function CurrentLocation() {
   const { pathname, search } = useLocation();
   return <output data-testid="current-location">{pathname + search}</output>;
 }
 
-async function renderListingGrades(
-  listing: Entity,
+async function renderGrades(
+  entity: Entity,
   entities: Entity[],
   initialRoute = '/catalog/pyxis/resource/listing-1/grades',
 ) {
   const entitiesByRef = new Map(
-    entities.map(entity => [stringifyEntityRef(entity), entity]),
+    entities.map(candidate => [stringifyEntityRef(candidate), candidate]),
   );
   const getEntitiesByRefs = jest.fn(
     async ({ entityRefs }: { entityRefs: string[] }) => ({
       items: entityRefs
         .map(ref => entitiesByRef.get(ref))
-        .filter((entity): entity is Entity => Boolean(entity)),
+        .filter((candidate): candidate is Entity => Boolean(candidate)),
     }),
   );
 
   await renderInTestApp(
     <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
-      <EntityProvider entity={listing}>
-        <ListingGrades />
+      <EntityProvider entity={entity}>
+        <Grades />
       </EntityProvider>
       <CurrentLocation />
     </TestApiProvider>,
@@ -70,7 +72,7 @@ async function renderListingGrades(
   return getEntitiesByRefs;
 }
 
-describe('ListingGrades', () => {
+describe('Grades', () => {
   it('shows only populated grades, starts collapsed, and expands image details', async () => {
     const user = userEvent.setup();
     const entities = portfolioFixtures(13);
@@ -95,7 +97,7 @@ describe('ListingGrades', () => {
       JSON.stringify(fixtureHealth(repository3, 'ready', 'B')),
     );
 
-    const getEntitiesByRefs = await renderListingGrades(listing, entities);
+    const getEntitiesByRefs = await renderGrades(listing, entities);
 
     const gradeA = await screen.findByRole('row', { name: /Grade A/ });
     const gradeB = screen.getByRole('row', { name: /Grade B/ });
@@ -133,13 +135,16 @@ describe('ListingGrades', () => {
       backgroundColor: 'var(--bui-bg-success)',
       color: 'var(--bui-fg-success-on-bg)',
     });
-    expect(getEntitiesByRefs).toHaveBeenCalledWith({
-      entityRefs: expect.arrayContaining([
+    const requestedRefs = getEntitiesByRefs.mock.calls.flatMap(
+      ([request]) => request.entityRefs,
+    );
+    expect(requestedRefs).toEqual(
+      expect.arrayContaining([
         'resource:pyxis/repository-1',
         'resource:pyxis/repository-3',
         'resource:pyxis/repository-5',
       ]),
-    });
+    );
 
     await user.click(gradeA);
 
@@ -199,7 +204,7 @@ describe('ListingGrades', () => {
       entity => entity.metadata.name === 'listing-2',
     )!;
 
-    await renderListingGrades(
+    await renderGrades(
       listing,
       entities,
       '/catalog/pyxis/resource/listing-2/grades?grade=a-with-drop',
@@ -220,5 +225,74 @@ describe('ListingGrades', () => {
     expect(
       screen.queryByRole('row', { name: /^Grade A 1 image$/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('shows the current repository grades without loading related entities', async () => {
+    const user = userEvent.setup();
+    const repository = fixtureEntity('repository');
+    repository.spec!.pyxisChi = JSON.parse(
+      JSON.stringify(fixtureHealth(repository, 'ready', 'A')),
+    );
+
+    const getEntitiesByRefs = await renderGrades(
+      repository,
+      [repository],
+      '/catalog/pyxis/resource/repository-1/grades',
+    );
+
+    expect(
+      await screen.findByRole('row', { name: /Grade A/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Container Health Index')).toBeInTheDocument();
+    expect(screen.getByText('Incomplete')).toBeInTheDocument();
+    expect(getEntitiesByRefs).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('row', { name: /Grade A/ }));
+
+    expect(
+      await screen.findByRole('link', { name: 'portfolio/repository-1' }),
+    ).toHaveAttribute('href', '/catalog/pyxis/resource/repository-1');
+    expect(screen.getByText('amd64')).toBeInTheDocument();
+    expect(screen.getByText('latest')).toBeInTheDocument();
+  });
+
+  it('shows grades for direct and listing-linked team repositories without duplicates', async () => {
+    const user = userEvent.setup();
+    const entities = teamPortfolioFixtures();
+    const team = entities.find(entity => entity.metadata.name === 'team-1')!;
+
+    const getEntitiesByRefs = await renderGrades(
+      team,
+      entities,
+      '/catalog/pyxis/group/team-1/grades',
+    );
+
+    const gradeA = await screen.findByRole('row', { name: /Grade A/ });
+    expect(gradeA).toHaveTextContent('2 images');
+    expect(screen.getByRole('row', { name: /Grade B/ })).toHaveTextContent(
+      '1 image',
+    );
+    const requestedRefs = getEntitiesByRefs.mock.calls.flatMap(
+      ([request]) => request.entityRefs,
+    );
+    expect(requestedRefs).toEqual(
+      expect.arrayContaining([
+        'resource:pyxis/repository-1',
+        'resource:pyxis/repository-3',
+        'resource:pyxis/repository-5',
+      ]),
+    );
+
+    await user.click(gradeA);
+
+    expect(
+      await screen.findByRole('link', { name: 'portfolio/repository-1' }),
+    ).toHaveAttribute('href', '/catalog/pyxis/resource/repository-1');
+    expect(
+      await screen.findByRole('link', { name: 'portfolio/repository-3' }),
+    ).toHaveAttribute('href', '/catalog/pyxis/resource/repository-3');
+    expect(
+      screen.getAllByRole('link', { name: 'portfolio/repository-3' }),
+    ).toHaveLength(1);
   });
 });

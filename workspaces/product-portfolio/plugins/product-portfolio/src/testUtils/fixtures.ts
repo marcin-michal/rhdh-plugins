@@ -334,3 +334,49 @@ export function portfolioFixtures(count = 32): Entity[] {
     },
   ];
 }
+
+export function teamPortfolioFixtures(): Entity[] {
+  const entities = portfolioFixtures(13);
+  const team = entities.find(entity => entity.metadata.name === 'team-1')!;
+  const listing = entities.find(
+    entity => entity.metadata.name === 'listing-1',
+  )!;
+  const repository1 = entities.find(
+    entity => entity.metadata.name === 'repository-1',
+  )!;
+  const repository3 = entities.find(
+    entity => entity.metadata.name === 'repository-3',
+  )!;
+  const repository5 = entities.find(
+    entity => entity.metadata.name === 'repository-5',
+  )!;
+  const teamRef = stringifyEntityRef(team);
+  const listingRef = stringifyEntityRef(listing);
+  const repository1Ref = stringifyEntityRef(repository1);
+  const repository5Ref = stringifyEntityRef(repository5);
+
+  team.relations = team.relations!.filter(
+    edge => edge.type !== 'ownerOf' || edge.targetRef !== repository1Ref,
+  );
+  repository1.relations = repository1.relations!.filter(
+    edge => edge.type !== 'ownedBy' || edge.targetRef !== teamRef,
+  );
+  listing.relations = listing.relations!.filter(
+    edge =>
+      edge.type !== PYXIS_RELATIONS.hasRepository ||
+      edge.targetRef !== repository5Ref,
+  );
+  repository5.relations = repository5.relations!.filter(
+    edge =>
+      edge.type !== PYXIS_RELATIONS.repositoryOf ||
+      edge.targetRef !== listingRef,
+  );
+  repository3.spec!.pyxisChi = JSON.parse(
+    JSON.stringify(fixtureHealth(repository3, 'ready', 'A')),
+  );
+  repository5.spec!.pyxisChi = JSON.parse(
+    JSON.stringify(fixtureHealth(repository5, 'ready', 'B')),
+  );
+
+  return entities;
+}

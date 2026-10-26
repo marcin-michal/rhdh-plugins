@@ -22,6 +22,13 @@ export type PublicationState =
   | 'deleted'
   | 'unknown'
   | 'not-applicable';
+
+export function publicationStateLabel(status: PublicationState): string {
+  return status
+    .replace(/-/g, ' ')
+    .replace(/^./, character => character.toUpperCase());
+}
+
 export function publicationState(model: PortfolioEntity): PublicationState {
   if (model.category === 'team' || model.category === 'user') {
     return 'not-applicable';

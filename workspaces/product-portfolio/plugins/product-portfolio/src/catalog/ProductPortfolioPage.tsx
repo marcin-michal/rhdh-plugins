@@ -32,7 +32,7 @@ import {
   type PortfolioCategory,
 } from './filterState';
 import { readEntity } from '../model/entities';
-import { QualityNotice } from '../components/QualityNotice';
+import { QualityNotice } from '../components/shared/QualityNotice';
 import { PortfolioTable } from './PortfolioTable';
 import { PortfolioToolbar, type PortfolioKindOption } from './PortfolioToolbar';
 

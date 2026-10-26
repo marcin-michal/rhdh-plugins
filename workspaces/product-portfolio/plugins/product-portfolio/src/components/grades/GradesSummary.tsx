@@ -23,18 +23,18 @@ import {
   type TableItem,
   useTable,
 } from '@backstage/ui';
-import type { RelatedState } from '../hooks/useRelatedEntities';
-import { aggregatePortfolioChi } from '../model/portfolioChi';
-import { readEntity } from '../model/entities';
-import { AsyncState } from './AsyncState';
-import { ChiObservationMetadata } from './shared/ChiObservationMetadata';
-import { QualityNotice } from './QualityNotice';
-import { DetailCard } from './shared/DetailCard';
+import type { RelatedState } from '../../hooks/useRelatedEntities';
+import { aggregatePortfolioChi } from '../../model/portfolioChi';
+import { readEntity } from '../../model/entities';
+import { AsyncState } from '../shared/AsyncState';
+import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
+import { QualityNotice } from '../shared/QualityNotice';
+import { DetailCard } from '../shared/DetailCard';
 import {
   gradeCellStyle,
   gradeToneForId,
   type GradeTone,
-} from './shared/gradeStyles';
+} from '../shared/gradeStyles';
 
 interface GradeRow extends TableItem {
   label: string;
@@ -47,6 +47,7 @@ const gradeColumns: ColumnConfig<GradeRow>[] = [
     id: 'grade',
     label: 'Grade',
     width: '3fr',
+    isRowHeader: true,
     cell: row => <Cell style={gradeCellStyle(row.tone)}>{row.label}</Cell>,
   },
   {
@@ -67,12 +68,12 @@ const gradeColumns: ColumnConfig<GradeRow>[] = [
   },
 ];
 
-export function ListingHealth({
+export function GradesSummary({
   state,
-  listingHref,
+  entityHref,
 }: {
   state: RelatedState;
-  listingHref?: string;
+  entityHref?: string;
 }) {
   const repositories = state.entities.filter(
     entity => readEntity(entity).value?.category === 'repository',
@@ -126,8 +127,8 @@ export function ListingHealth({
                 columnConfig={gradeColumns}
                 rowConfig={{
                   getHref: row =>
-                    listingHref
-                      ? `${listingHref}/grades?grade=${row.id}`
+                    entityHref
+                      ? `${entityHref}/grades?grade=${row.id}`
                       : undefined,
                 }}
               />

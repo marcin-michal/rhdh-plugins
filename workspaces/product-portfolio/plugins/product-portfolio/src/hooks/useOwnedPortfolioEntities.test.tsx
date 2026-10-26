@@ -19,8 +19,14 @@ import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { TestApiProvider } from '@backstage/test-utils';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
-import { portfolioFixtures } from '../testUtils/fixtures';
-import { useOwnedPortfolioEntities } from './useOwnedPortfolioEntities';
+import {
+  portfolioFixtures,
+  teamPortfolioFixtures,
+} from '../testUtils/fixtures';
+import {
+  useOwnedPortfolioEntities,
+  useOwnedPortfolioRepositories,
+} from './useOwnedPortfolioEntities';
 
 describe('useOwnedPortfolioEntities', () => {
   it('returns only owned portfolio listings and repositories', async () => {
@@ -55,6 +61,36 @@ describe('useOwnedPortfolioEntities', () => {
     expect(
       result.current.entities.every(entity => entity.kind !== 'User'),
     ).toBe(true);
+    expect(result.current.partial).toBe(false);
+  });
+
+  it('includes repositories linked from owned listings and deduplicates direct ownership', async () => {
+    const entities = teamPortfolioFixtures();
+    const team = entities.find(entity => entity.metadata.name === 'team-1')!;
+    const entitiesByRef = new Map(
+      entities.map(entity => [stringifyEntityRef(entity), entity]),
+    );
+    const getEntitiesByRefs = jest.fn(
+      async ({ entityRefs }: { entityRefs: string[] }) => ({
+        items: entityRefs
+          .map(ref => entitiesByRef.get(ref))
+          .filter((entity): entity is Entity => Boolean(entity)),
+      }),
+    );
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+        {children}
+      </TestApiProvider>
+    );
+
+    const { result } = renderHook(() => useOwnedPortfolioRepositories(team), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.entities.map(entity => entity.metadata.name)).toEqual(
+      ['repository-1', 'repository-3', 'repository-5'],
+    );
     expect(result.current.partial).toBe(false);
   });
 });

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-import type { ReactNode } from 'react';
 import { useRouteRef } from '@backstage/core-plugin-api';
 import {
   entityRouteParams,
@@ -26,34 +25,18 @@ import {
   PYXIS_RELATIONS,
   type SourceListing,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { useRelatedEntities } from '../hooks/useRelatedEntities';
-import { readEntity, type PortfolioEntity } from '../model/entities';
-import { publicationState } from '../model/publicationState';
-import { Timestamp } from './shared/Timestamp';
-import { ListingHealth } from './ListingHealth';
-import { QualityNotice } from './QualityNotice';
-import { DetailCard } from './shared/DetailCard';
-
-function DetailRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <Flex
-      direction={{ initial: 'column', sm: 'row' }}
-      justify="between"
-      gap="1"
-    >
-      <Text as="span" variant="body-small" color="secondary">
-        {label}
-      </Text>
-      <Box style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{children}</Box>
-    </Flex>
-  );
-}
+import { useRelatedEntities } from '../../hooks/useRelatedEntities';
+import { readEntity, type PortfolioEntity } from '../../model/entities';
+import {
+  publicationState,
+  publicationStateLabel,
+} from '../../model/publicationState';
+import { GradesSummary } from '../grades/GradesSummary';
+import { QualityNotice } from '../shared/QualityNotice';
+import { ContactList } from '../shared/ContactList';
+import { DetailCard } from '../shared/DetailCard';
+import { DetailRow } from '../shared/DetailRow';
+import { Timestamp } from '../shared/Timestamp';
 
 function sourceListing(model: PortfolioEntity): SourceListing | undefined {
   if (model.category !== 'listing' || !model.projection.record) {
@@ -61,12 +44,6 @@ function sourceListing(model: PortfolioEntity): SourceListing | undefined {
   }
 
   return model.projection.record as SourceListing;
-}
-
-function displayStatus(status: string): string {
-  return status
-    .replace(/-/g, ' ')
-    .replace(/^./, character => character.toUpperCase());
 }
 
 function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
@@ -102,7 +79,7 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
     ? entityRoute(entityRouteParams(teamRouteTarget))
     : undefined;
   const listingHref = entityRoute(entityRouteParams(model.entity));
-  const status = displayStatus(publicationState(model));
+  const status = publicationStateLabel(publicationState(model));
   const description =
     listing?.descriptions?.long?.trim() ||
     model.entity.metadata.description?.trim() ||
@@ -119,34 +96,41 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
     <Flex direction="column" gap="4">
       <DetailCard title="Description">
         <Flex
-          direction={{ initial: 'column', sm: 'row' }}
-          align={{ initial: 'start', sm: 'center' }}
-          justify="between"
-          gap="3"
+          direction={{ initial: 'column', md: 'row' }}
+          align={{ initial: 'stretch', md: 'start' }}
+          gap="4"
         >
-          <Flex align="center" gap="2">
-            <Text as="span" variant="body-small" color="secondary">
-              Team
+          <Box style={{ flex: '2 1 0%', minWidth: 0 }}>
+            <Text
+              as="p"
+              variant="body-medium"
+              style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
+            >
+              {description}
             </Text>
-            {teamHref ? (
-              <Link href={teamHref}>{teamName}</Link>
-            ) : (
-              <Text as="span">{teamName}</Text>
-            )}
+          </Box>
+          <Flex
+            direction="column"
+            gap="3"
+            style={{ flex: '1 1 0%', minWidth: 0 }}
+          >
+            <DetailRow label="Team">
+              {teamHref ? (
+                <Link href={teamHref}>{teamName}</Link>
+              ) : (
+                <Text as="span">{teamName}</Text>
+              )}
+            </DetailRow>
+            <DetailRow label="Pyxis ID">{model.projection.source.id}</DetailRow>
+            <DetailRow label="Publication status">
+              <TagGroup aria-label="Source status">
+                <Tag id="source-status" size="small">
+                  {status}
+                </Tag>
+              </TagGroup>
+            </DetailRow>
           </Flex>
-          <TagGroup aria-label="Source status">
-            <Tag id="source-status" size="small">
-              {status}
-            </Tag>
-          </TagGroup>
         </Flex>
-        <Text
-          as="p"
-          variant="body-medium"
-          style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
-        >
-          {description}
-        </Text>
       </DetailCard>
 
       <Flex
@@ -156,37 +140,10 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
       >
         <Flex direction="column" gap="4" style={{ flex: 1, minWidth: 0 }}>
           <DetailCard title="Contacts">
-            {contacts.length ? (
-              <Flex direction="column" gap="3">
-                {contacts.map((contact, index) => (
-                  <Flex
-                    key={[
-                      contact.type ?? 'contact',
-                      contact.email_address ?? index,
-                    ].join(':')}
-                    direction="column"
-                    gap="1"
-                  >
-                    <Text as="h3" variant="body-medium" weight="bold">
-                      {contact.type || 'Contact'}
-                    </Text>
-                    {contact.email_address ? (
-                      <Link href={`mailto:${contact.email_address}`}>
-                        {contact.email_address}
-                      </Link>
-                    ) : (
-                      <Text as="p" color="secondary">
-                        Email address not available.
-                      </Text>
-                    )}
-                  </Flex>
-                ))}
-              </Flex>
-            ) : (
-              <Text as="p" color="secondary">
-                No contacts are listed for this product.
-              </Text>
-            )}
+            <ContactList
+              contacts={contacts}
+              emptyMessage="No contacts are listed for this product."
+            />
           </DetailCard>
 
           <DetailCard title="Support">
@@ -249,7 +206,7 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
 
         {/* Keep the grade card at its natural height while the left stack grows. */}
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <ListingHealth state={repositories} listingHref={listingHref} />
+          <GradesSummary state={repositories} entityHref={listingHref} />
         </Box>
       </Flex>
       {teamState.error && (

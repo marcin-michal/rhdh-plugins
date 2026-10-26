@@ -157,6 +157,32 @@ const recordBase = {
   _id: sourceId,
   last_update_date: date.nullable().optional(),
 };
+const repositoryContactSchema = z.object({
+  email_address: z.string(),
+  type: z.enum([
+    'Product Manager',
+    'Image Owner',
+    'Notification',
+    'Errata Writer',
+    'Doc Owner',
+    'QE Owner',
+    'Program Manager',
+  ]),
+});
+const documentationLinkSchema = z.object({
+  title: z.string(),
+  type: z.enum([
+    'Customer Case Study',
+    'Documentation',
+    'White Paper',
+    'Blog',
+    'Demo Video',
+    'Product Datasheet',
+    'Recorded Webinar',
+    'Solution Brief',
+  ]),
+  url: z.string(),
+});
 const resource = {
   ...recordBase,
   creation_date: date.nullable().optional(),
@@ -207,10 +233,28 @@ const records = {
       .nullable()
       .optional(),
     product_listings: z.array(sourceId).nullable().optional(),
-    metrics: z
-      .object({ last_update_date: date.nullable().optional() })
+    release_categories: z
+      .array(
+        z.enum([
+          'Generally Available',
+          'Beta',
+          'Tech Preview',
+          'Deprecated',
+          'Mixed',
+        ]),
+      )
       .nullable()
       .optional(),
+    architectures: z.array(z.string()).nullable().optional(),
+    documentation_links: z.array(documentationLinkSchema).nullable().optional(),
+    metrics: z
+      .object({
+        last_update_date: date.nullable().optional(),
+        pulls_in_last_30_days: z.number().int().nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+    contacts: z.array(repositoryContactSchema).nullable().optional(),
   }),
   team: z.object({ ...recordBase, name: optionalString, members: z.unknown() }),
 };

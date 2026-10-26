@@ -15,12 +15,14 @@
  */
 
 import { PageBlueprint } from '@backstage/frontend-plugin-api';
+import { DashboardIcon } from '@backstage/core-components';
 import { rootRouteRef } from '../routes';
 
 export const portfolioPage = PageBlueprint.make({
   params: {
     path: '/product-portfolio',
     title: 'Product Portfolio',
+    icon: <DashboardIcon />,
     routeRef: rootRouteRef,
     loader: () =>
       import('../catalog/ProductPortfolioPage').then(m => (

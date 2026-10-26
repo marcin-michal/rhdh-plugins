@@ -17,7 +17,7 @@
 import type { ReactNode } from 'react';
 import { Button, Text } from '@backstage/ui';
 import { Progress } from '@backstage/core-components';
-import type { RelatedState } from '../hooks/useRelatedEntities';
+import type { RelatedState } from '../../hooks/useRelatedEntities';
 import { QualityNotice } from './QualityNotice';
 
 export function AsyncState({

@@ -14,9 +14,13 @@
  * limitations under the License.
  */
 
-import type { Entity } from '@backstage/catalog-model';
-import { useRelatedEntities } from './useRelatedEntities';
-import { readEntity } from '../model/entities';
+import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import { readEntity, sortEntities } from '../model/entities';
+import {
+  useRelatedEntities,
+  useRelatedEntitiesFromEntities,
+} from './useRelatedEntities';
 
 export function useOwnedPortfolioEntities(team: Entity) {
   const state = useRelatedEntities(team, 'ownerOf');
@@ -31,5 +35,31 @@ export function useOwnedPortfolioEntities(team: Entity) {
     repositories: managed.filter(
       e => readEntity(e).value?.category === 'repository',
     ),
+  };
+}
+
+export function useOwnedPortfolioRepositories(team: Entity) {
+  const owned = useOwnedPortfolioEntities(team);
+  const linked = useRelatedEntitiesFromEntities(
+    owned.listings,
+    PYXIS_RELATIONS.hasRepository,
+  );
+  const repositories = new Map<string, Entity>();
+
+  for (const repository of [...owned.repositories, ...linked.entities]) {
+    if (readEntity(repository).value?.category === 'repository') {
+      repositories.set(stringifyEntityRef(repository), repository);
+    }
+  }
+
+  return {
+    loading: owned.loading || linked.loading,
+    entities: [...repositories.values()].sort(sortEntities),
+    partial: owned.partial || linked.partial,
+    error: owned.error ?? linked.error,
+    retry: () => {
+      owned.retry();
+      linked.retry();
+    },
   };
 }

@@ -24,6 +24,8 @@ export const listingOverview = EntityContentBlueprint.make({
     title: 'Overview',
     filter: isPyxisListing,
     loader: () =>
-      import('../components/ListingOverview').then(m => <m.ListingOverview />),
+      import('../components/product-listing/Overview').then(m => (
+        <m.ListingOverview />
+      )),
   },
 });

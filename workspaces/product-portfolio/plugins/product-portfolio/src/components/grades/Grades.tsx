@@ -37,19 +37,23 @@ import {
 } from '@backstage/ui';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { useLocation } from 'react-router-dom';
-import { useRelatedEntities } from '../hooks/useRelatedEntities';
-import { readEntity } from '../model/entities';
+import {
+  useRelatedEntities,
+  type RelatedState,
+} from '../../hooks/useRelatedEntities';
+import { useOwnedPortfolioRepositories } from '../../hooks/useOwnedPortfolioEntities';
+import { readEntity } from '../../model/entities';
 import {
   aggregatePortfolioChi,
   type ImageOccurrence,
   type PortfolioChiBucket,
-} from '../model/portfolioChi';
-import { AsyncState } from './AsyncState';
-import { ChiObservationMetadata } from './shared/ChiObservationMetadata';
-import { DetailCard } from './shared/DetailCard';
-import { Timestamp } from './shared/Timestamp';
-import { QualityNotice } from './QualityNotice';
-import { gradeCellStyle, gradeToneForId } from './shared/gradeStyles';
+} from '../../model/portfolioChi';
+import { AsyncState } from '../shared/AsyncState';
+import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
+import { DetailCard } from '../shared/DetailCard';
+import { Timestamp } from '../shared/Timestamp';
+import { QualityNotice } from '../shared/QualityNotice';
+import { gradeCellStyle, gradeToneForId } from '../shared/gradeStyles';
 
 type GradeSectionId = 'a' | 'a-with-drop' | 'b' | 'c' | 'd' | 'e' | 'f';
 
@@ -273,7 +277,7 @@ const gradeColumns: ColumnConfig<GradeTableRow>[] = [
   {
     id: 'name',
     label: 'Name',
-    width: '2.4fr',
+    width: '2fr',
     isRowHeader: true,
     cell: row => {
       if (row.kind === 'grade') {
@@ -316,7 +320,7 @@ const gradeColumns: ColumnConfig<GradeTableRow>[] = [
   {
     id: 'tags',
     label: 'Tags',
-    width: '2fr',
+    width: '3fr',
     cell: row =>
       row.kind === 'grade' ? (
         gradeCell(row, null)
@@ -382,18 +386,77 @@ const gradeColumns: ColumnConfig<GradeTableRow>[] = [
   },
 ];
 
-export function ListingGrades() {
+export function Grades() {
   const { entity } = useEntity();
-  const entityRoute = useRouteRef(entityRouteRef);
   const model = readEntity(entity);
-  const related = useRelatedEntities(entity, PYXIS_RELATIONS.hasRepository);
-  const location = useLocation();
-  const now = Date.now();
 
+  if (
+    !model.value ||
+    (model.value.category !== 'listing' &&
+      model.value.category !== 'repository' &&
+      model.value.category !== 'team')
+  ) {
+    return (
+      <DetailCard title="Grades">
+        <Text as="p" color="danger">
+          {model.error ?? 'Managed entity category mismatch.'}
+        </Text>
+      </DetailCard>
+    );
+  }
+
+  if (model.value.category === 'listing') {
+    return <ListingGrades entity={entity} />;
+  }
+  if (model.value.category === 'repository') {
+    return <RepositoryGrades entity={entity} />;
+  }
+  return <TeamGrades entity={entity} />;
+}
+
+function ListingGrades({ entity }: { entity: Entity }) {
+  const related = useRelatedEntities(entity, PYXIS_RELATIONS.hasRepository);
+  return (
+    <GradesContent
+      related={related}
+      empty="No repositories are linked to this product listing."
+    />
+  );
+}
+
+function RepositoryGrades({ entity }: { entity: Entity }) {
+  const related: RelatedState = {
+    loading: false,
+    entities: [entity],
+    partial: false,
+    retry: () => undefined,
+  };
+  return <GradesContent related={related} />;
+}
+
+function TeamGrades({ entity }: { entity: Entity }) {
+  const related = useOwnedPortfolioRepositories(entity);
+  return (
+    <GradesContent
+      related={related}
+      empty="No repositories are owned by or linked to this team."
+    />
+  );
+}
+
+function GradesContent({
+  related,
+  empty = 'No repository observations available.',
+}: {
+  related: RelatedState;
+  empty?: string;
+}) {
+  const entityRoute = useRouteRef(entityRouteRef);
+  const location = useLocation();
   const repositories = related.entities.filter(
     repository => readEntity(repository).value?.category === 'repository',
   );
-  const summary = aggregatePortfolioChi(repositories, now);
+  const summary = aggregatePortfolioChi(repositories, Date.now());
   const sections = sectionsFromBuckets(summary.buckets);
   const expandedGrade = new URLSearchParams(location.search).get('grade');
   const rows = gradeRows(sections, expandedGrade, repository =>
@@ -404,16 +467,6 @@ export function ListingGrades() {
     data: rows,
     paginationOptions: { type: 'none' },
   });
-
-  if (!model.value || model.value.category !== 'listing') {
-    return (
-      <DetailCard title="Grades">
-        <Text as="p" color="danger">
-          {model.error ?? 'Managed entity category mismatch.'}
-        </Text>
-      </DetailCard>
-    );
-  }
 
   return (
     <DetailCard title="Container Health Index">
@@ -432,10 +485,7 @@ export function ListingGrades() {
           </Text>
         </Flex>
 
-        <AsyncState
-          state={related}
-          empty="No repositories are linked to this product listing."
-        >
+        <AsyncState state={related} empty={empty}>
           <Flex direction="column" gap="3">
             {sections.length ? (
               <Table

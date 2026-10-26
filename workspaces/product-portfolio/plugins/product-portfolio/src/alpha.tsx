@@ -18,8 +18,15 @@ import { createFrontendPlugin } from '@backstage/frontend-plugin-api';
 import { rootRouteRef } from './routes';
 import { portfolioPage } from './extensions/portfolioPage';
 import { listingOverview } from './extensions/listingOverview';
+import { repositoryOverview } from './extensions/repositoryOverview';
 import { listingRepositories } from './extensions/listingRepositories';
 import { listingGrades } from './extensions/listingGrades';
+import { repositoryGrades } from './extensions/repositoryGrades';
+import { repositoryProductListings } from './extensions/repositoryProductListings';
+import { teamOverview } from './extensions/teamOverview';
+import { teamRepositories } from './extensions/teamRepositories';
+import { teamProductListings } from './extensions/teamProductListings';
+import { teamGrades } from './extensions/teamGrades';
 
 /** Product Portfolio feature for the new frontend system. @alpha */
 export default createFrontendPlugin({
@@ -27,8 +34,15 @@ export default createFrontendPlugin({
   extensions: [
     portfolioPage,
     listingOverview,
+    repositoryOverview,
+    repositoryProductListings,
     listingRepositories,
     listingGrades,
+    repositoryGrades,
+    teamOverview,
+    teamRepositories,
+    teamProductListings,
+    teamGrades,
   ],
   routes: { root: rootRouteRef },
   info: { packageJson: () => import('../package.json') },

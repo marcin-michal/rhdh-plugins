@@ -23,7 +23,6 @@ export const listingGrades = EntityContentBlueprint.make({
     path: '/grades',
     title: 'Grades',
     filter: isPyxisListing,
-    loader: () =>
-      import('../components/ListingGrades').then(m => <m.ListingGrades />),
+    loader: () => import('../components/grades/Grades').then(m => <m.Grades />),
   },
 });

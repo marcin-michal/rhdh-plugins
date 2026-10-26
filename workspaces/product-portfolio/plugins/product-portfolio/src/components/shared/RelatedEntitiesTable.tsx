@@ -36,10 +36,12 @@ import {
   type TableItem,
   useTable,
 } from '@backstage/ui';
-import { readEntity, sortEntities } from '../model/entities';
-import { Timestamp } from './shared/Timestamp';
+import { readEntity, sortEntities } from '../../model/entities';
+import { Timestamp } from './Timestamp';
 
-interface RepositoryTableRow extends TableItem {
+type RelatedEntityCategory = 'listing' | 'repository';
+
+interface RelatedEntityTableRow extends TableItem {
   entity: Entity;
   name: string;
   href: string;
@@ -47,10 +49,33 @@ interface RepositoryTableRow extends TableItem {
   updatedAt?: string;
 }
 
-function sortRepositoryRows(
-  rows: RepositoryTableRow[],
+const tableCopy: Record<
+  RelatedEntityCategory,
+  {
+    title: string;
+    searchPlaceholder: string;
+    noMatchesMessage: string;
+    emptyMessage: string;
+  }
+> = {
+  listing: {
+    title: 'Product listings',
+    searchPlaceholder: 'Search product listings',
+    noMatchesMessage: 'No product listings match your search.',
+    emptyMessage: 'No product listings are linked to this repository.',
+  },
+  repository: {
+    title: 'Repositories',
+    searchPlaceholder: 'Search repositories',
+    noMatchesMessage: 'No repositories match your search.',
+    emptyMessage: 'No repositories are linked to this product listing.',
+  },
+};
+
+function sortRows(
+  rows: RelatedEntityTableRow[],
   sort: SortDescriptor,
-): RepositoryTableRow[] {
+): RelatedEntityTableRow[] {
   if (sort.column !== 'name') {
     return rows;
   }
@@ -62,10 +87,10 @@ function sortRepositoryRows(
   );
 }
 
-function searchRepositoryRows(
-  rows: RepositoryTableRow[],
+function searchRows(
+  rows: RelatedEntityTableRow[],
   search: string,
-): RepositoryTableRow[] {
+): RelatedEntityTableRow[] {
   const query = search.trim().toLocaleLowerCase();
   if (!query) {
     return rows;
@@ -78,7 +103,7 @@ function searchRepositoryRows(
   );
 }
 
-const repositoryColumns: ColumnConfig<RepositoryTableRow>[] = [
+const relatedEntityColumns: ColumnConfig<RelatedEntityTableRow>[] = [
   {
     id: 'name',
     label: 'Name',
@@ -105,19 +130,28 @@ const repositoryColumns: ColumnConfig<RepositoryTableRow>[] = [
   },
 ];
 
-export function ListingRepositoriesTable({
+export function RelatedEntitiesTable({
   entities,
   loading,
+  category,
+  emptyMessage,
 }: {
   entities: Entity[];
   loading: boolean;
+  category: RelatedEntityCategory;
+  emptyMessage?: string;
 }) {
+  const copy = tableCopy[category];
+  const titleId =
+    category === 'listing'
+      ? 'repository-product-listings-title'
+      : 'listing-repositories-title';
   const entityRoute = useRouteRef(entityRouteRef);
   const rows = useMemo(
     () =>
       entities.flatMap(entity => {
         const model = readEntity(entity).value;
-        if (!model || model.category !== 'repository') {
+        if (!model || model.category !== category) {
           return [];
         }
 
@@ -132,15 +166,15 @@ export function ListingRepositoriesTable({
           },
         ];
       }),
-    [entities, entityRoute],
+    [category, entities, entityRoute],
   );
 
   const { tableProps, search } = useTable({
     mode: 'complete',
     data: rows,
     initialSort: { column: 'name', direction: 'ascending' },
-    sortFn: sortRepositoryRows,
-    searchFn: searchRepositoryRows,
+    sortFn: sortRows,
+    searchFn: searchRows,
     paginationOptions: {
       type: 'page',
       pageSize: 20,
@@ -153,15 +187,15 @@ export function ListingRepositoriesTable({
       <Flex align="center" justify="center">
         <Text as="p" variant="body-medium" color="secondary">
           {search.value.trim()
-            ? 'No repositories match your search.'
-            : 'No repositories are linked to this product listing.'}
+            ? copy.noMatchesMessage
+            : emptyMessage ?? copy.emptyMessage}
         </Text>
       </Flex>
     </Box>
   );
 
   return (
-    <Card aria-labelledby="listing-repositories-title">
+    <Card aria-labelledby={titleId}>
       <CardBody>
         <Flex direction="column" gap="4">
           <Flex
@@ -170,13 +204,13 @@ export function ListingRepositoriesTable({
             justify="between"
             gap="3"
           >
-            <Text as="h2" id="listing-repositories-title" variant="title-small">
-              Repositories
+            <Text as="h2" id={titleId} variant="title-small">
+              {copy.title}
             </Text>
             <Box width="100%" style={{ maxWidth: '24rem' }}>
               <TextField
                 label="Search by name"
-                placeholder="Search repositories"
+                placeholder={copy.searchPlaceholder}
                 value={search.value}
                 onChange={search.onChange}
                 size="small"
@@ -185,7 +219,7 @@ export function ListingRepositoriesTable({
           </Flex>
           <Table
             {...tableProps}
-            columnConfig={repositoryColumns}
+            columnConfig={relatedEntityColumns}
             rowConfig={{ getHref: row => row.href }}
             data={
               loading && tableProps.data?.length === 0

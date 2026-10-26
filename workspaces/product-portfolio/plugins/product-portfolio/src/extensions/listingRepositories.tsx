@@ -24,7 +24,7 @@ export const listingRepositories = EntityContentBlueprint.make({
     title: 'Repositories',
     filter: isPyxisListing,
     loader: () =>
-      import('../components/ListingRepositories').then(m => (
+      import('../components/product-listing/Repositories').then(m => (
         <m.ListingRepositories />
       )),
   },

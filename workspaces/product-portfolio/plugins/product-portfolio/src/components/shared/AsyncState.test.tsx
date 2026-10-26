@@ -17,8 +17,8 @@
 import { renderInTestApp } from '@backstage/test-utils';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { fixtureEntity } from '../testUtils/fixtures';
-import type { RelatedState } from '../hooks/useRelatedEntities';
+import { fixtureEntity } from '../../testUtils/fixtures';
+import type { RelatedState } from '../../hooks/useRelatedEntities';
 import { AsyncState } from './AsyncState';
 
 function state(overrides: Partial<RelatedState> = {}): RelatedState {

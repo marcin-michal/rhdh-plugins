@@ -24,15 +24,18 @@ import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router-dom';
-import { fixtureEntity, portfolioFixtures } from '../testUtils/fixtures';
-import { ListingRepositories } from './ListingRepositories';
+import { fixtureEntity, portfolioFixtures } from '../../testUtils/fixtures';
+import { RepositoryProductListings } from './ProductListings';
 
 function CurrentPath() {
   const { pathname } = useLocation();
   return <output data-testid="current-path">{pathname}</output>;
 }
 
-async function renderListingRepositories(listing: Entity, entities: Entity[]) {
+async function renderRepositoryProductListings(
+  repository: Entity,
+  entities: Entity[],
+) {
   const entitiesByRef = new Map(
     entities.map(entity => [stringifyEntityRef(entity), entity]),
   );
@@ -46,8 +49,8 @@ async function renderListingRepositories(listing: Entity, entities: Entity[]) {
 
   await renderInTestApp(
     <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
-      <EntityProvider entity={listing}>
-        <ListingRepositories />
+      <EntityProvider entity={repository}>
+        <RepositoryProductListings />
       </EntityProvider>
       <CurrentPath />
     </TestApiProvider>,
@@ -61,70 +64,58 @@ async function renderListingRepositories(listing: Entity, entities: Entity[]) {
   return getEntitiesByRefs;
 }
 
-describe('ListingRepositories', () => {
-  it('lists only linked repositories and opens a repository detail page on row click', async () => {
+describe('RepositoryProductListings', () => {
+  it('lists product listings that have this repository and opens listing details', async () => {
     const user = userEvent.setup();
     const entities = portfolioFixtures(13);
-    const listing = entities.find(
-      entity => entity.metadata.name === 'listing-1',
+    const repository = entities.find(
+      entity => entity.metadata.name === 'repository-1',
     )!;
 
-    const getEntitiesByRefs = await renderListingRepositories(
-      listing,
+    const getEntitiesByRefs = await renderRepositoryProductListings(
+      repository,
       entities,
     );
 
-    expect(await screen.findByText('Repository 1')).toBeInTheDocument();
-    expect(screen.getByText('Repository 3')).toBeInTheDocument();
-    expect(screen.getByText('Repository 5')).toBeInTheDocument();
-    expect(screen.queryByText('Repository 2')).not.toBeInTheDocument();
+    expect(await screen.findByText('Listing 1')).toBeInTheDocument();
+    expect(screen.queryByText('Listing 2')).not.toBeInTheDocument();
     expect(getEntitiesByRefs).toHaveBeenCalledWith({
-      entityRefs: expect.arrayContaining([
-        'resource:pyxis/repository-1',
-        'resource:pyxis/repository-3',
-        'resource:pyxis/repository-5',
-      ]),
+      entityRefs: ['resource:pyxis/listing-1'],
     });
 
     const search = screen.getByRole('textbox', { name: 'Search by name' });
-    await user.type(search, 'repository-3');
+    await user.type(search, 'listing-1');
     await waitFor(() => {
-      expect(screen.queryByText('Repository 1')).not.toBeInTheDocument();
-      expect(screen.getByText('Repository 3')).toBeInTheDocument();
-      expect(screen.queryByText('Repository 5')).not.toBeInTheDocument();
+      expect(screen.getByText('Listing 1')).toBeInTheDocument();
     });
-
     await user.clear(search);
-    await waitFor(() =>
-      expect(screen.getByText('Repository 1')).toBeInTheDocument(),
-    );
-    await user.type(search, 'not-a-repository');
+    await user.type(search, 'not-a-listing');
     expect(
-      await screen.findByText('No repositories match your search.'),
+      await screen.findByText('No product listings match your search.'),
     ).toBeInTheDocument();
 
     await user.clear(search);
     await waitFor(() =>
-      expect(screen.getByText('Repository 1')).toBeInTheDocument(),
+      expect(screen.getByText('Listing 1')).toBeInTheDocument(),
     );
-
-    await user.click(screen.getByRole('row', { name: /Repository 1/ }));
+    await user.click(screen.getByRole('row', { name: /Listing 1/ }));
     await waitFor(() =>
       expect(screen.getByTestId('current-path')).toHaveTextContent(
-        '/catalog/pyxis/resource/repository-1',
+        '/catalog/pyxis/resource/listing-1',
       ),
     );
   });
 
-  it('shows an empty state when the listing has no repository relations', async () => {
-    const listing = fixtureEntity('listing');
-    const getEntitiesByRefs = await renderListingRepositories(listing, [
-      listing,
-    ]);
+  it('shows an empty state when the repository has no listing relations', async () => {
+    const repository = fixtureEntity('repository');
+    const getEntitiesByRefs = await renderRepositoryProductListings(
+      repository,
+      [repository],
+    );
 
     expect(
       await screen.findByText(
-        'No repositories are linked to this product listing.',
+        'No product listings are linked to this repository.',
       ),
     ).toBeInTheDocument();
     expect(getEntitiesByRefs).not.toHaveBeenCalled();

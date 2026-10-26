@@ -24,8 +24,9 @@ import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router-dom';
-import { fixtureEntity, portfolioFixtures } from '../testUtils/fixtures';
-import { ListingOverview } from './ListingOverview';
+import type { PyxisProjection } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import { fixtureEntity, portfolioFixtures } from '../../testUtils/fixtures';
+import { ListingOverview } from './Overview';
 
 function CurrentLocation() {
   const { pathname, search } = useLocation();
@@ -66,8 +67,15 @@ describe('ListingOverview', () => {
       await screen.findByText('Long description for listing 1'),
     ).toBeInTheDocument();
     expect(screen.getByText(/team 1/i)).toBeInTheDocument();
+    expect(screen.getByText('Team', { exact: true })).toBeInTheDocument();
     expect(screen.getByText('Published')).toBeInTheDocument();
-    expect(screen.getByText(/repository snapshots/)).toBeInTheDocument();
+    expect(screen.getByText('Pyxis ID')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (listing.spec!.pyxis as unknown as PyxisProjection).source.id,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Observation status')).toBeInTheDocument();
     expect(await screen.findByText('A', { exact: true })).toBeInTheDocument();
     expect(screen.getByText('Incomplete')).toBeInTheDocument();
     expect(getEntitiesByRefs).toHaveBeenCalled();
@@ -120,8 +128,8 @@ describe('ListingOverview', () => {
       },
     );
 
-    const gradeRow = await screen.findByRole('row', { name: /^A\s+1$/ });
-    await user.click(gradeRow);
+    const gradeHeader = await screen.findByRole('rowheader', { name: 'A' });
+    await user.click(gradeHeader);
 
     await waitFor(() => {
       expect(screen.getByTestId('current-location')).toHaveTextContent(

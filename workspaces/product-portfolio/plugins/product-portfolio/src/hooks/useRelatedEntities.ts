@@ -32,13 +32,22 @@ export function useRelatedEntities(
   entity: Entity,
   relation: string,
 ): RelatedState {
+  return useRelatedEntitiesFromEntities([entity], relation);
+}
+
+export function useRelatedEntitiesFromEntities(
+  entities: readonly Entity[],
+  relation: string,
+): RelatedState {
   const api = useApi(catalogApiRef);
   const refsKey = JSON.stringify(
     [
       ...new Set(
-        (entity.relations ?? [])
-          .filter(r => r.type === relation)
-          .map(r => r.targetRef),
+        entities.flatMap(entity =>
+          (entity.relations ?? [])
+            .filter(r => r.type === relation)
+            .map(r => r.targetRef),
+        ),
       ),
     ].sort(),
   );
@@ -59,7 +68,7 @@ export function useRelatedEntities(
 
     async function resolve() {
       try {
-        const entities: Entity[] = [];
+        const resolvedEntities: Entity[] = [];
 
         for (let i = 0; i < refs.length; i += 100) {
           const batch = refs.slice(i, i + 100);
@@ -69,7 +78,7 @@ export function useRelatedEntities(
             return;
           }
 
-          entities.push(
+          resolvedEntities.push(
             ...response.items.filter(
               (v): v is Entity =>
                 Boolean(v) && batch.includes(stringifyEntityRef(v!)),
@@ -78,7 +87,9 @@ export function useRelatedEntities(
         }
 
         const unique = [
-          ...new Map(entities.map(v => [stringifyEntityRef(v), v])).values(),
+          ...new Map(
+            resolvedEntities.map(v => [stringifyEntityRef(v), v]),
+          ).values(),
         ].sort(sortEntities);
 
         if (active) {

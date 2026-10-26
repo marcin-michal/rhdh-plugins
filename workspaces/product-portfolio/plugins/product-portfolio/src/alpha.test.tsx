@@ -25,8 +25,15 @@ import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import catalog from '@backstage/plugin-catalog/alpha';
 import plugin from './alpha';
 import { listingOverview } from './extensions/listingOverview';
+import { repositoryOverview } from './extensions/repositoryOverview';
 import { listingRepositories } from './extensions/listingRepositories';
 import { listingGrades } from './extensions/listingGrades';
+import { repositoryGrades } from './extensions/repositoryGrades';
+import { repositoryProductListings } from './extensions/repositoryProductListings';
+import { teamOverview } from './extensions/teamOverview';
+import { teamRepositories } from './extensions/teamRepositories';
+import { teamProductListings } from './extensions/teamProductListings';
+import { teamGrades } from './extensions/teamGrades';
 import { portfolioPage } from './extensions/portfolioPage';
 import { portfolioFixtures } from './testUtils/fixtures';
 
@@ -39,8 +46,15 @@ describe('portfolio NFS wiring', () => {
     for (const id of [
       'page:product-portfolio',
       'entity-content:product-portfolio/listing-overview',
+      'entity-content:product-portfolio/repository-overview',
+      'entity-content:product-portfolio/repository-product-listings',
       'entity-content:product-portfolio/listing-repositories',
       'entity-content:product-portfolio/listing-grades',
+      'entity-content:product-portfolio/repository-grades',
+      'entity-content:product-portfolio/team-overview',
+      'entity-content:product-portfolio/team-repositories',
+      'entity-content:product-portfolio/team-product-listings',
+      'entity-content:product-portfolio/team-grades',
     ] as const) {
       expect(plugin.getExtension(id)).toBeDefined();
     }
@@ -51,7 +65,15 @@ describe('portfolio NFS wiring', () => {
       createExtensionTester(portfolioPage).get(coreExtensionData.routePath),
     ).toBe('/product-portfolio');
     expect(
+      createExtensionTester(portfolioPage).get(coreExtensionData.icon),
+    ).toBeDefined();
+    expect(
       createExtensionTester(listingOverview).get(coreExtensionData.routePath),
+    ).toBe('/');
+    expect(
+      createExtensionTester(repositoryOverview).get(
+        coreExtensionData.routePath,
+      ),
     ).toBe('/');
     expect(
       createExtensionTester(listingRepositories).get(
@@ -59,7 +81,29 @@ describe('portfolio NFS wiring', () => {
       ),
     ).toBe('/repositories');
     expect(
+      createExtensionTester(repositoryProductListings).get(
+        coreExtensionData.routePath,
+      ),
+    ).toBe('/product-listings');
+    expect(
       createExtensionTester(listingGrades).get(coreExtensionData.routePath),
+    ).toBe('/grades');
+    expect(
+      createExtensionTester(repositoryGrades).get(coreExtensionData.routePath),
+    ).toBe('/grades');
+    expect(
+      createExtensionTester(teamOverview).get(coreExtensionData.routePath),
+    ).toBe('/');
+    expect(
+      createExtensionTester(teamRepositories).get(coreExtensionData.routePath),
+    ).toBe('/repositories');
+    expect(
+      createExtensionTester(teamProductListings).get(
+        coreExtensionData.routePath,
+      ),
+    ).toBe('/product-listings');
+    expect(
+      createExtensionTester(teamGrades).get(coreExtensionData.routePath),
     ).toBe('/grades');
   });
 
