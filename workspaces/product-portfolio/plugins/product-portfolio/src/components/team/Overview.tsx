@@ -65,7 +65,7 @@ function TeamOverviewContent({
 
   return (
     <Flex direction="column" gap="4">
-      <DetailCard title="Team information">
+      <DetailCard title="About">
         <DetailRow label="Pyxis ID">{pyxisId}</DetailRow>
       </DetailCard>
       <Flex

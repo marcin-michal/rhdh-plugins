@@ -94,7 +94,7 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
 
   return (
     <Flex direction="column" gap="4">
-      <DetailCard title="Description">
+      <DetailCard title="About">
         <Flex
           direction={{ initial: 'column', md: 'row' }}
           align={{ initial: 'stretch', md: 'start' }}

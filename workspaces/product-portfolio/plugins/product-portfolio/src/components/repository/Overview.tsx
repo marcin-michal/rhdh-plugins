@@ -120,7 +120,7 @@ function RepositoryOverviewContent({
 
   return (
     <Flex direction="column" gap="4">
-      <DetailCard title="Repository information">
+      <DetailCard title="About">
         <Flex
           direction={{ initial: 'column', md: 'row' }}
           align={{ initial: 'stretch', md: 'start' }}
