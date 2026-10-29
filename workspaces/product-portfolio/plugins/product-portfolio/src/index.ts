@@ -15,4 +15,28 @@
  */
 
 /** Catalog-native Product Portfolio frontend. @packageDocumentation */
+export {
+  productPortfolioPlugin as default,
+  productPortfolioPlugin,
+} from './plugin';
+export {
+  ProductPortfolioPageExtension,
+  ProductPortfolioListingOverview,
+  ProductPortfolioListingRepositories,
+  ProductPortfolioRepositoryOverview,
+  ProductPortfolioRepositoryProductListings,
+  ProductPortfolioTeamOverview,
+  ProductPortfolioTeamRepositories,
+  ProductPortfolioTeamProductListings,
+  ProductPortfolioGrades,
+} from './plugin';
+/** @public */
 export { ProductPortfolioPage } from './catalog/ProductPortfolioPage';
+export {
+  isPyxisListing,
+  isPyxisRepository,
+  isPyxisTeam,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+export { isPyxisPortfolioEntity } from './legacyConditions';
+/** @public */
+export { DashboardIcon as ProductPortfolioIcon } from '@backstage/core-components';

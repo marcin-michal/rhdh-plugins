@@ -23,6 +23,7 @@ import {
   type TableItem,
   useTable,
 } from '@backstage/ui';
+import { useNavigate } from 'react-router-dom';
 import type { RelatedState } from '../../hooks/useRelatedEntities';
 import { aggregatePortfolioChi } from '../../model/portfolioChi';
 import { readEntity } from '../../model/entities';
@@ -74,6 +75,7 @@ export function GradesSummary({
   state: RelatedState;
   entityHref?: string;
 }) {
+  const navigate = useNavigate();
   const repositories = state.entities.filter(
     entity => readEntity(entity).value?.category === 'repository',
   );
@@ -129,12 +131,19 @@ export function GradesSummary({
               <Table
                 {...tableProps}
                 columnConfig={gradeColumns}
-                rowConfig={{
-                  getHref: row =>
-                    entityHref
-                      ? `${entityHref}/grades?grade=${row.id}`
-                      : undefined,
-                }}
+                rowConfig={
+                  entityHref
+                    ? {
+                        onClick: row => {
+                          navigate(
+                            `${entityHref}/product-portfolio/grades?grade=${encodeURIComponent(
+                              row.id,
+                            )}`,
+                          );
+                        },
+                      }
+                    : undefined
+                }
               />
             ) : (
               <Text as="p" color="secondary">

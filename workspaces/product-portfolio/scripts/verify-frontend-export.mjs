@@ -31,6 +31,17 @@ const exported = join(frontendDirectory, 'dist-dynamic');
 const read = path => JSON.parse(readFileSync(path, 'utf8'));
 const hash = path =>
   createHash('sha256').update(readFileSync(path)).digest('hex');
+const classicComponents = [
+  'ProductPortfolioPageExtension',
+  'ProductPortfolioListingOverview',
+  'ProductPortfolioListingRepositories',
+  'ProductPortfolioRepositoryOverview',
+  'ProductPortfolioRepositoryProductListings',
+  'ProductPortfolioTeamOverview',
+  'ProductPortfolioTeamRepositories',
+  'ProductPortfolioTeamProductListings',
+  'ProductPortfolioGrades',
+];
 export function verifyFrontendExport() {
   assert.equal(
     read('release-evidence/frontend-export-source-state.json').sourceHash,
@@ -41,6 +52,16 @@ export function verifyFrontendExport() {
   assert.equal(pkg.backstage.role, 'frontend-plugin');
   assert.equal(pkg.backstage.pluginId, 'product-portfolio');
   assert.equal(pkg.backstage['supported-versions'], '1.49.4');
+  assert.equal(
+    pkg.scalprum?.name,
+    'red-hat-developer-hub.backstage-plugin-product-portfolio',
+    'Missing classic Scalprum package name',
+  );
+  assert.equal(
+    pkg.scalprum?.exposedModules?.PluginRoot,
+    './src/index.ts',
+    'Missing classic PluginRoot entry point',
+  );
   assert.equal(
     Object.keys(pkg.devDependencies ?? {}).length,
     0,
@@ -59,6 +80,11 @@ export function verifyFrontendExport() {
     hash(join(frontendDirectory, 'app-config.yaml')),
     'Missing or altered installation fragment',
   );
+  assert.equal(
+    hash(join(exported, 'app-config.legacy.yaml')),
+    hash(join(frontendDirectory, 'app-config.legacy.yaml')),
+    'Missing or altered classic installation fragment',
+  );
   const walk = directory =>
     readdirSync(directory)
       .sort()
@@ -67,6 +93,48 @@ export function verifyFrontendExport() {
         return statSync(file).isDirectory() ? walk(file) : [file];
       });
   const files = walk(exported);
+  const scalprum = read(join(exported, 'dist-scalprum/plugin-manifest.json'));
+  assert.equal(scalprum.name, pkg.scalprum.name);
+  assert(scalprum.loadScripts.length > 0, 'Missing classic entry script');
+  for (const script of scalprum.loadScripts)
+    assert(
+      existsSync(join(exported, 'dist-scalprum', script)),
+      'Missing classic entry script: ' + script,
+    );
+  const classicConfig = readFileSync(
+    join(exported, 'app-config.legacy.yaml'),
+    'utf8',
+  );
+  assert(
+    classicConfig.includes(pkg.scalprum.name),
+    'Classic config refers to a different Scalprum package',
+  );
+  const rootSource = readFileSync(
+    join(frontendDirectory, 'src/index.ts'),
+    'utf8',
+  );
+  for (const name of ['ProductPortfolioIcon', ...classicComponents]) {
+    assert(rootSource.includes(name), 'Missing classic module export: ' + name);
+    assert(
+      classicConfig.includes(`importName: ${name}`),
+      'Missing classic config mount: ' + name,
+    );
+  }
+  for (const condition of [
+    'isPyxisListing',
+    'isPyxisRepository',
+    'isPyxisTeam',
+    'isPyxisPortfolioEntity',
+  ]) {
+    assert(
+      rootSource.includes(condition),
+      'Missing classic condition export: ' + condition,
+    );
+    assert(
+      classicConfig.includes(`- ${condition}`),
+      'Missing classic config condition: ' + condition,
+    );
+  }
   for (const file of files)
     assert(
       !/(^|\/)(fixtures|testUtils|tests|__tests__|packages)(\/|$)|\.test\.|\.(key|pem|crt)$/.test(
@@ -112,6 +180,9 @@ export function verifyFrontendExport() {
   const nfs = read('release-evidence/frontend-nfs-tests.json');
   assert.equal(nfs.success, true);
   assert(nfs.numPassedTests >= 3, 'Missing NFS feature evidence');
+  const classic = read('release-evidence/frontend-legacy-tests.json');
+  assert.equal(classic.success, true);
+  assert(classic.numPassedTests >= 2, 'Missing classic adapter evidence');
   const inventory = {
     sourceHash: sourceState(),
     name: pkg.name,
@@ -120,9 +191,28 @@ export function verifyFrontendExport() {
     entrypoint: 'dist/mf-manifest.json',
     feature: '@backstage/FrontendPlugin',
     featureEvidence: 'frontend-nfs-tests.json',
+    classicEntrypoint: pkg.scalprum.exposedModules.PluginRoot,
+    classicConfig: 'app-config.legacy.yaml',
+    classicEvidence: 'frontend-legacy-tests.json',
     extensions: [
       'page:product-portfolio',
       'entity-content:product-portfolio/listing-overview',
+      'entity-content:product-portfolio/repository-overview',
+      'entity-content:product-portfolio/repository-product-listings',
+      'entity-content:product-portfolio/listing-repositories',
+      'entity-content:product-portfolio/listing-grades',
+      'entity-content:product-portfolio/repository-grades',
+      'entity-content:product-portfolio/team-overview',
+      'entity-content:product-portfolio/team-repositories',
+      'entity-content:product-portfolio/team-product-listings',
+      'entity-content:product-portfolio/team-grades',
+    ],
+    classicComponents,
+    classicEntityTabs: [
+      '/product-portfolio',
+      '/product-portfolio/repositories',
+      '/product-portfolio/product-listings',
+      '/product-portfolio/grades',
     ],
     routes: ['/product-portfolio', '/'],
     sharedDependencies: mf.shared.map(({ name, version, singleton }) => ({

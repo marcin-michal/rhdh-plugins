@@ -1,0 +1,97 @@
+# Merge this fragment into pluginConfig in a classic RHDH dynamic-plugins.yaml
+# entry. The default PluginRoot Scalprum module is used. The default Catalog
+# Overview remains untouched; portfolio views use filtered, dedicated tabs.
+dynamicPlugins:
+  frontend:
+    red-hat-developer-hub.backstage-plugin-product-portfolio:
+      appIcons:
+        - name: productPortfolioIcon
+          importName: ProductPortfolioIcon
+      dynamicRoutes:
+        - path: /product-portfolio
+          importName: ProductPortfolioPageExtension
+          menuItem:
+            text: Product Portfolio
+            icon: productPortfolioIcon
+      menuItems:
+        product-portfolio:
+          parent: default.catalog
+          priority: 10
+      entityTabs:
+        - path: /product-portfolio
+          title: Product Portfolio
+          mountPoint: entity.page.product-portfolio-overview
+        - path: /product-portfolio/repositories
+          title: Repositories
+          mountPoint: entity.page.product-portfolio-repositories
+        - path: /product-portfolio/product-listings
+          title: Product listings
+          mountPoint: entity.page.product-portfolio-product-listings
+        - path: /product-portfolio/grades
+          title: Grades
+          mountPoint: entity.page.product-portfolio-grades
+      mountPoints:
+        - mountPoint: entity.page.product-portfolio-overview/cards
+          importName: ProductPortfolioListingOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisListing
+        - mountPoint: entity.page.product-portfolio-overview/cards
+          importName: ProductPortfolioRepositoryOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisRepository
+        - mountPoint: entity.page.product-portfolio-overview/cards
+          importName: ProductPortfolioTeamOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.product-portfolio-repositories/cards
+          importName: ProductPortfolioListingRepositories
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisListing
+        - mountPoint: entity.page.product-portfolio-repositories/cards
+          importName: ProductPortfolioTeamRepositories
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.product-portfolio-product-listings/cards
+          importName: ProductPortfolioRepositoryProductListings
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisRepository
+        - mountPoint: entity.page.product-portfolio-product-listings/cards
+          importName: ProductPortfolioTeamProductListings
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.product-portfolio-grades/cards
+          importName: ProductPortfolioGrades
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisPortfolioEntity

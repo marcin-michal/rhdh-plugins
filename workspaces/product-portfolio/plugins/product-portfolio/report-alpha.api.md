@@ -24,6 +24,85 @@ const _default: OverridableFrontendPlugin<
   },
   {},
   {
+    'entity-content:product-portfolio/listing-grades': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'listing-grades';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
     'entity-content:product-portfolio/listing-overview': OverridableExtensionDefinition<{
       kind: 'entity-content';
       name: 'listing-overview';
@@ -42,7 +121,6 @@ const _default: OverridableFrontendPlugin<
         icon?: string | undefined;
       };
       output:
-        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
         | ExtensionDataRef<string, 'core.routing.path', {}>
         | ExtensionDataRef<
             RouteRef<AnyRouteRefParams>,
@@ -51,6 +129,639 @@ const _default: OverridableFrontendPlugin<
               optional: true;
             }
           >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/listing-repositories': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'listing-repositories';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/repository-grades': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'repository-grades';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/repository-overview': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'repository-overview';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/repository-product-listings': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'repository-product-listings';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/team-grades': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'team-grades';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/team-overview': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'team-overview';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/team-product-listings': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'team-product-listings';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
+        | ExtensionDataRef<
+            (entity: Entity) => boolean,
+            'catalog.entity-filter-function',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-filter-expression',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<string, 'catalog.entity-content-title', {}>
+        | ExtensionDataRef<
+            string,
+            'catalog.entity-content-group',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<
+            string | ReactElement<any, string | JSXElementConstructor<any>>,
+            'catalog.entity-content-icon',
+            {
+              optional: true;
+            }
+          >;
+      inputs: {};
+      params: {
+        defaultPath?: [Error: `Use the 'path' param instead`];
+        path: string;
+        defaultTitle?: [Error: `Use the 'title' param instead`];
+        title: string;
+        defaultGroup?: [Error: `Use the 'group' param instead`];
+        group?:
+          | (
+              | 'overview'
+              | 'documentation'
+              | 'development'
+              | 'deployment'
+              | 'operation'
+              | 'observability'
+            )
+          | (string & {});
+        icon?: string | ReactElement;
+        loader: () => Promise<JSX.Element>;
+        routeRef?: RouteRef;
+        filter?: string | FilterPredicate | ((entity: Entity) => boolean);
+      };
+    }>;
+    'entity-content:product-portfolio/team-repositories': OverridableExtensionDefinition<{
+      kind: 'entity-content';
+      name: 'team-repositories';
+      config: {
+        path: string | undefined;
+        title: string | undefined;
+        filter: FilterPredicate | undefined;
+        group: string | false | undefined;
+        icon: string | undefined;
+      };
+      configInput: {
+        filter?: FilterPredicate | undefined;
+        title?: string | undefined;
+        path?: string | undefined;
+        group?: string | false | undefined;
+        icon?: string | undefined;
+      };
+      output:
+        | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<
+            RouteRef<AnyRouteRefParams>,
+            'core.routing.ref',
+            {
+              optional: true;
+            }
+          >
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
         | ExtensionDataRef<
             (entity: Entity) => boolean,
             'catalog.entity-filter-function',
@@ -115,8 +826,8 @@ const _default: OverridableFrontendPlugin<
         path?: string | undefined;
       };
       output:
-        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
         | ExtensionDataRef<string, 'core.routing.path', {}>
+        | ExtensionDataRef<JSX_2.Element, 'core.reactElement', {}>
         | ExtensionDataRef<
             RouteRef<AnyRouteRefParams>,
             'core.routing.ref',

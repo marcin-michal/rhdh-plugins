@@ -54,7 +54,7 @@ const result = spawnSync(
     'export',
     '--clean',
     ...(frontend
-      ? ['--no-generate-scalprum-assets']
+      ? []
       : [
           '--embed-package',
           '@red-hat-developer-hub/backstage-plugin-product-portfolio-common',
@@ -103,6 +103,10 @@ if (frontend) {
     resolve(directory, 'app-config.yaml'),
     resolve(directory, 'dist-dynamic/app-config.yaml'),
   );
+  copyFileSync(
+    resolve(directory, 'app-config.legacy.yaml'),
+    resolve(directory, 'dist-dynamic/app-config.legacy.yaml'),
+  );
   mkdirSync('release-evidence', { recursive: true });
   const tests = spawnSync(
     'yarn',
@@ -113,13 +117,28 @@ if (frontend) {
       '--runInBand',
       '--watch=false',
       '--testPathPatterns=alpha.test.tsx',
-      '--testNamePattern=exports exactly|binds the dedicated|mounts the lazy',
+      '--testNamePattern=exports the active page|binds the dedicated|mounts the lazy',
       '--json',
       `--outputFile=${resolve('release-evidence/frontend-nfs-tests.json')}`,
     ],
     { stdio: 'inherit' },
   );
   assert.equal(tests.status, 0, 'Default NFS feature and route tests failed');
+  const legacyTests = spawnSync(
+    'yarn',
+    [
+      'workspace',
+      '@red-hat-developer-hub/backstage-plugin-product-portfolio',
+      'test',
+      '--runInBand',
+      '--watch=false',
+      '--testPathPatterns=legacy.test.ts',
+      '--json',
+      `--outputFile=${resolve('release-evidence/frontend-legacy-tests.json')}`,
+    ],
+    { stdio: 'inherit' },
+  );
+  assert.equal(legacyTests.status, 0, 'Classic frontend adapter tests failed');
 }
 assert.equal(sourceState(), sourceHash, 'Source changed during export');
 

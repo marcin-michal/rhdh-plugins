@@ -71,9 +71,7 @@ describe('TeamOverview', () => {
     const projection = team.spec!.pyxis as unknown as PyxisProjection;
     const getEntitiesByRefs = await renderTeamOverview(team, entities);
 
-    expect(
-      screen.getByRole('heading', { name: 'Team information' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'About' })).toBeInTheDocument();
     expect(screen.getByText('Pyxis ID')).toBeInTheDocument();
     expect(screen.getByText(projection.source.id)).toBeInTheDocument();
     expect(

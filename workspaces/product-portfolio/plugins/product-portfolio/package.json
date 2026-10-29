@@ -31,6 +31,12 @@
       "@red-hat-developer-hub/backstage-plugin-pyxis-common"
     ]
   },
+  "scalprum": {
+    "name": "red-hat-developer-hub.backstage-plugin-product-portfolio",
+    "exposedModules": {
+      "PluginRoot": "./src/index.ts"
+    }
+  },
   "scripts": {
     "build": "backstage-cli package build",
     "lint": "backstage-cli package lint",

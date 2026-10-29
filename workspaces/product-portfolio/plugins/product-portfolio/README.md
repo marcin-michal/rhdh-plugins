@@ -1,12 +1,20 @@
 # Product Portfolio
 
-Catalog-native frontend for Backstage 1.49.4 / RHDH 1.10.3. Load the default
-`/alpha` export in the new frontend system. The dedicated route is
-`/product-portfolio`; entity navigation uses the standard catalog routes.
+Catalog-native frontend for Backstage 1.49.4 / RHDH 1.10.3. The package ships
+both the classic frontend entry point and the new frontend system entry point
+at `/alpha`, using the same page and entity view components.
 
-The host must run `app-next` with `ENABLE_STANDARD_MODULE_FEDERATION=true`.
-Merge `app-config.yaml` to exclude Catalog Overview from managed Pyxis entities.
-Other installed unconditional entity tabs need the equivalent host predicate.
+For a legacy frontend, the plugin root is the Scalprum entry point and does
+not require NFS environment variables. Merge `app-config.legacy.yaml` into the
+plugin's `pluginConfig` in the classic `dynamic-plugins.yaml`. It adds the
+`/product-portfolio` page and filtered entity tabs for portfolio overview,
+repositories, product listings, and grades. The default Catalog Overview stays
+available for all entities.
+
+For an NFS host, load the `/alpha` export and run `app-next` with
+`ENABLE_STANDARD_MODULE_FEDERATION=true`. Merge `app-config.yaml` to exclude
+Catalog Overview from managed Pyxis entities. Other installed unconditional
+entity tabs need the equivalent host predicate.
 
 Accepts `spec.pyxis` version 1 and `spec.pyxisChi` schema 2. Images mean the
 latest selected image per configured stream and architecture, not full history.
@@ -52,6 +60,10 @@ Run the scoped frontend tests with:
 yarn workspace @red-hat-developer-hub/backstage-plugin-product-portfolio test --runInBand --watch=false
 ```
 
+The classic adapter exposes the same listing, repository, team, and Grades
+views through Backstage `createPlugin` extensions. Its entity predicates and
+exported component names are covered by the classic adapter tests.
+
 Playwright and automated browser accessibility checks are deferred by user
 request. No Playwright installation or browser download is required.
 
@@ -68,8 +80,9 @@ unit/component/typecheck CI lane. Preserve logs as build artifacts.
 3. Run `yarn export-dynamic`, `yarn test:export`, and
    `yarn test:export:frontend`. The CLI is pinned at 1.10.8. Frontend common
    runtime code is bundled; the type-only portfolio common library erases.
-   Frontend exports include Module Federation `./alpha` and the installation
-   fragment; no legacy mount configuration is supplied.
+   Frontend exports include both Scalprum assets for classic hosts and Module
+   Federation `./alpha` assets for NFS hosts, along with both host configuration
+   fragments.
 4. Set distinct `PYXIS_OCI_TAG` and `PRODUCT_PORTFOLIO_FRONTEND_OCI_TAG` values
    and the approved shared `PYXIS_TARGET_PLATFORM`; run `yarn package:oci`.
    This creates two local images and `release-evidence/release-pair.json`.

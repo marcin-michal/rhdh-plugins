@@ -36,7 +36,7 @@ import {
   useTable,
 } from '@backstage/ui';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   useRelatedEntities,
   type RelatedState,
@@ -452,6 +452,7 @@ function GradesContent({
 }) {
   const entityRoute = useRouteRef(entityRouteRef);
   const location = useLocation();
+  const navigate = useNavigate();
   const repositories = related.entities.filter(
     repository => readEntity(repository).value?.category === 'repository',
   );
@@ -492,15 +493,19 @@ function GradesContent({
                 {...tableProps}
                 columnConfig={gradeColumns}
                 rowConfig={{
-                  getHref: row =>
-                    row.kind === 'grade'
-                      ? gradeHref(
-                          location.pathname,
-                          location.search,
-                          location.hash,
-                          row.expanded ? undefined : row.sectionId,
-                        )
-                      : undefined,
+                  onClick: row => {
+                    if (row.kind !== 'grade') {
+                      return;
+                    }
+                    navigate(
+                      gradeHref(
+                        location.pathname,
+                        location.search,
+                        location.hash,
+                        row.expanded ? undefined : row.sectionId,
+                      ),
+                    );
+                  },
                 }}
               />
             ) : (
