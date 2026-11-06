@@ -21,8 +21,9 @@ import {
   entityRouteRef,
 } from '@backstage/plugin-catalog-react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { useLocation } from 'react-router-dom';
 import {
   fixtureEntity,
@@ -99,10 +100,10 @@ describe('Grades', () => {
 
     const getEntitiesByRefs = await renderGrades(listing, entities);
 
-    const gradeA = await screen.findByRole('row', { name: /Grade A/ });
-    const gradeB = screen.getByRole('row', { name: /Grade B/ });
+    const gradeA = await screen.findByRole('button', { name: /Grade A/ });
+    const gradeB = screen.getByRole('button', { name: /Grade B/ });
     expect(
-      screen.queryByRole('row', { name: /Grade C/ }),
+      screen.queryByRole('button', { name: /Grade C/ }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'portfolio/repository-1' }),
@@ -122,24 +123,14 @@ describe('Grades', () => {
     expect(
       document.querySelector(`time[datetime="${observedAt}"]`),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Name' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Tags' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Architecture' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('columnheader', { name: 'Last pushed' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Name' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Tags' })).toBeNull();
     expect(
       screen.getByText(
         /latest published CHI candidate selected for a configured/,
       ),
     ).toBeInTheDocument();
-    expect(gradeA.querySelector('td')).toHaveStyle({
+    expect(gradeA).toHaveStyle({
       backgroundColor: 'var(--bui-bg-success)',
       color: 'var(--bui-fg-success-on-bg)',
     });
@@ -155,6 +146,22 @@ describe('Grades', () => {
     );
 
     await user.click(gradeA);
+
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Tags' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Architecture' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Last pushed' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Next scheduled drop' }),
+    ).toBeInTheDocument();
 
     const repositoryLink = await screen.findByRole('link', {
       name: 'portfolio/repository-1',
@@ -173,7 +180,7 @@ describe('Grades', () => {
     expect(catalogLink).toHaveAttribute('target', '_blank');
     expect(catalogLink).toHaveAttribute('rel', 'noopener noreferrer');
     expect(catalogLink).toHaveAttribute('title', 'Open in Red Hat Catalog');
-    expect(catalogLink.querySelector('svg')).toBeInTheDocument();
+    expect(catalogLink).toHaveTextContent('↗');
     expect(screen.getByTestId('current-location')).toHaveTextContent(
       '/catalog/pyxis/resource/listing-1/grades?grade=a',
     );
@@ -221,7 +228,7 @@ describe('Grades', () => {
     expect(screen.getByTestId('current-location')).toHaveTextContent(
       '/catalog/pyxis/resource/listing-2/grades?grade=a-with-drop',
     );
-    const gradeAWithDrop = await screen.findByRole('row', {
+    const gradeAWithDrop = await screen.findByRole('button', {
       name: /Grade A with scheduled drop/,
     });
     expect(gradeAWithDrop).toBeInTheDocument();
@@ -231,7 +238,7 @@ describe('Grades', () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('row', { name: /^Grade A 1 image$/ }),
+      screen.queryByRole('button', { name: /^Grade A 1 image$/ }),
     ).not.toBeInTheDocument();
   });
 
@@ -249,7 +256,7 @@ describe('Grades', () => {
     );
 
     expect(
-      await screen.findByRole('row', { name: /Grade A/ }),
+      await screen.findByRole('button', { name: /Grade A/ }),
     ).toBeInTheDocument();
     expect(screen.getByText('Container Health Index')).toBeInTheDocument();
     expect(screen.getByText('Latest grade observation')).toBeInTheDocument();
@@ -260,7 +267,7 @@ describe('Grades', () => {
     ).toBeInTheDocument();
     expect(getEntitiesByRefs).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('row', { name: /Grade A/ }));
+    await user.click(screen.getByRole('button', { name: /Grade A/ }));
 
     expect(
       await screen.findByRole('link', { name: 'portfolio/repository-1' }),
@@ -280,9 +287,9 @@ describe('Grades', () => {
       '/catalog/pyxis/group/team-1/grades',
     );
 
-    const gradeA = await screen.findByRole('row', { name: /Grade A/ });
+    const gradeA = await screen.findByRole('button', { name: /Grade A/ });
     expect(gradeA).toHaveTextContent('2 images');
-    expect(screen.getByRole('row', { name: /Grade B/ })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: /Grade B/ })).toHaveTextContent(
       '1 image',
     );
     const requestedRefs = getEntitiesByRefs.mock.calls.flatMap(
@@ -307,5 +314,96 @@ describe('Grades', () => {
     expect(
       screen.getAllByRole('link', { name: 'portfolio/repository-3' }),
     ).toHaveLength(1);
+  });
+
+  it('searches and paginates expanded grade rows and expands each tag cell', async () => {
+    const user = userEvent.setup();
+    const entities = portfolioFixtures(60);
+    const listing = entities.find(
+      entity => entity.metadata.name === 'listing-1',
+    )!;
+    const repositoryRefs = new Set(
+      listing
+        .relations!.filter(
+          relation => relation.type === PYXIS_RELATIONS.hasRepository,
+        )
+        .map(relation => relation.targetRef),
+    );
+    const repositories = entities.filter(entity =>
+      repositoryRefs.has(stringifyEntityRef(entity)),
+    );
+
+    repositories.forEach((repository, index) => {
+      const health = fixtureHealth(repository, 'ready', 'A');
+      health.snapshot!.images[0].imageId = `image-${index + 1}`;
+      health.snapshot!.images[0].activeTags = [
+        'latest',
+        '9.4',
+        '1.2',
+        'extra-4',
+        'extra-5',
+      ];
+      repository.spec!.pyxisChi = JSON.parse(JSON.stringify(health));
+    });
+
+    expect(repositories.length).toBeGreaterThan(20);
+    await renderGrades(listing, entities);
+
+    const gradeA = await screen.findByRole('button', { name: /Grade A/ });
+    expect(screen.queryByRole('columnheader', { name: 'Name' })).toBeNull();
+
+    await user.click(gradeA);
+
+    expect(screen.getAllByRole('columnheader', { name: 'Name' })).toHaveLength(
+      1,
+    );
+    expect(
+      screen.getByRole('columnheader', { name: 'Next scheduled drop' }),
+    ).toBeInTheDocument();
+    const firstPageRowCount = screen.getAllByRole('link', {
+      name: /^portfolio\/repository-/,
+    }).length;
+
+    const searchField = screen.getByRole('searchbox', {
+      name: 'Search grade A images by repository name',
+    });
+    await user.type(searchField, 'REPOSITORY-1');
+    expect(
+      await screen.findByRole('link', { name: 'portfolio/repository-1' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'portfolio/repository-3' }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(searchField);
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('link', { name: /^portfolio\/repository-/ }),
+      ).toHaveLength(firstPageRowCount);
+    });
+
+    const firstRepositoryLink = screen.getAllByRole('link', {
+      name: /^portfolio\/repository-/,
+    })[0];
+    const firstRow = firstRepositoryLink.closest('tr');
+    expect(firstRow).not.toBeNull();
+    const firstRowWithin = within(firstRow!);
+    expect(firstRowWithin.getByText('latest')).toBeInTheDocument();
+    expect(firstRowWithin.queryByText('extra-4')).toBeNull();
+    await user.click(firstRowWithin.getByRole('button', { name: '+2 more' }));
+    expect(firstRowWithin.getByText('extra-4')).toBeInTheDocument();
+    expect(
+      firstRowWithin.getByRole('button', { name: 'Show fewer tags' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(screen.getByRole('button', { name: 'Next table page' }));
+    expect(
+      screen.getAllByRole('link', { name: /^portfolio\/repository-/ }),
+    ).toHaveLength(
+      Math.min(firstPageRowCount, repositories.length - firstPageRowCount),
+    );
+
+    await user.click(gradeA);
+    expect(screen.queryByRole('columnheader', { name: 'Name' })).toBeNull();
   });
 });

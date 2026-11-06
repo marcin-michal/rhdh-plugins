@@ -136,7 +136,7 @@ export function GradesSummary({
                     ? {
                         onClick: row => {
                           navigate(
-                            `${entityHref}/product-portfolio/grades?grade=${encodeURIComponent(
+                            `${entityHref}/grades?grade=${encodeURIComponent(
                               row.id,
                             )}`,
                           );

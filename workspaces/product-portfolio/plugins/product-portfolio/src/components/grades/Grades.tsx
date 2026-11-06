@@ -14,27 +14,10 @@
  * limitations under the License.
  */
 
-import type { ReactNode } from 'react';
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
-import { useRouteRef } from '@backstage/core-plugin-api';
-import {
-  entityRouteParams,
-  entityRouteRef,
-  useEntity,
-} from '@backstage/plugin-catalog-react';
-import {
-  Cell,
-  CellText,
-  Flex,
-  Link,
-  Table,
-  Tag,
-  TagGroup,
-  Text,
-  type ColumnConfig,
-  type TableItem,
-  useTable,
-} from '@backstage/ui';
+import { useCallback, useMemo, useRef } from 'react';
+import type { Entity } from '@backstage/catalog-model';
+import { useEntity } from '@backstage/plugin-catalog-react';
+import { Flex, Text } from '@backstage/ui';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -44,44 +27,19 @@ import {
 import { useOwnedPortfolioRepositories } from '../../hooks/useOwnedPortfolioEntities';
 import { readEntity } from '../../model/entities';
 import {
-  aggregatePortfolioChi,
+  collectPortfolioChiData,
+  summarizePortfolioChiData,
   type ImageOccurrence,
   type PortfolioChiBucket,
 } from '../../model/portfolioChi';
 import { AsyncState } from '../shared/AsyncState';
 import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
 import { DetailCard } from '../shared/DetailCard';
-import { Timestamp } from '../shared/Timestamp';
-import { gradeCellStyle, gradeToneForId } from '../shared/gradeStyles';
-
-type GradeSectionId = 'a' | 'a-with-drop' | 'b' | 'c' | 'd' | 'e' | 'f';
-
-interface GradeSection {
-  id: GradeSectionId;
-  label: string;
-  images: ImageOccurrence[];
-}
-
-interface GradeRow extends TableItem {
-  kind: 'grade';
-  sectionId: GradeSectionId;
-  label: string;
-  count: number;
-  expanded: boolean;
-}
-
-interface ImageRow extends TableItem {
-  kind: 'image';
-  imageId: string;
-  repositoryName: string;
-  repositoryHref: string;
-  catalogHref?: string;
-  activeTags: readonly string[];
-  architecture: string;
-  lastPushedAt: string | null;
-}
-
-type GradeTableRow = GradeRow | ImageRow;
+import {
+  GradeSectionTable,
+  type GradeSection,
+  type GradeSectionId,
+} from './GradeSectionTable';
 
 const gradeSectionLabels: Array<{
   id: GradeSectionId;
@@ -121,132 +79,6 @@ function sectionsFromBuckets(buckets: PortfolioChiBucket[]): GradeSection[] {
   });
 }
 
-function latestPushDate(image: ImageOccurrence['image']): string | null {
-  return Object.values(image.pushDates).reduce<string | null>(
-    (latest, pushDate) =>
-      Number.isFinite(Date.parse(pushDate)) &&
-      (!latest || Date.parse(pushDate) > Date.parse(latest))
-        ? pushDate
-        : latest,
-    null,
-  );
-}
-
-function repositoryRowDetails(
-  repository: Entity,
-  image: ImageOccurrence['image'],
-): Pick<ImageRow, 'repositoryName' | 'catalogHref'> {
-  const model = readEntity(repository).value;
-  const record = model?.projection.record;
-  const repositoryName =
-    record &&
-    'repository' in record &&
-    typeof record.repository === 'string' &&
-    record.repository
-      ? record.repository
-      : undefined;
-  let catalogHref: string | undefined;
-
-  if (model?.category === 'repository' && repositoryName) {
-    const pathSegments = repositoryName.split('/').filter(Boolean);
-    const [namespace, ...nameSegments] = pathSegments;
-    const name = nameSegments.join('/');
-    const repositoryId = model.projection.source.id;
-
-    if (namespace && name && repositoryId) {
-      const catalogPath = [namespace, ...nameSegments, repositoryId]
-        .map(segment => encodeURIComponent(segment))
-        .join('/');
-      const url = new URL(
-        `https://catalog.redhat.com/en/software/containers/${catalogPath}`,
-      );
-
-      const tag =
-        image.selectedIn.find(Boolean) ?? image.activeTags.find(Boolean);
-      if (tag) {
-        url.searchParams.set('tag', tag);
-      }
-
-      catalogHref = url.toString();
-    }
-  }
-
-  return {
-    repositoryName:
-      repositoryName ??
-      model?.path ??
-      model?.title ??
-      repository.metadata.title ??
-      repository.metadata.name,
-    catalogHref,
-  };
-}
-
-function ExternalLinkIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 16 16"
-      width="14"
-      height="14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M9.5 2.5h4v4M13.25 2.75 7.5 8.5" />
-      <path d="M7 4H4a1.5 1.5 0 0 0-1.5 1.5v6A1.5 1.5 0 0 0 4 13h6a1.5 1.5 0 0 0 1.5-1.5v-3" />
-    </svg>
-  );
-}
-
-function gradeRows(
-  sections: GradeSection[],
-  expandedGrade: string | null,
-  repositoryHref: (repository: Entity) => string,
-): GradeTableRow[] {
-  return sections.flatMap(section => {
-    const isExpanded = expandedGrade === section.id;
-    const groupRow: GradeRow = {
-      id: `grade-${section.id}`,
-      kind: 'grade',
-      sectionId: section.id,
-      label: section.label,
-      count: section.images.length,
-      expanded: isExpanded,
-    };
-
-    if (!isExpanded) {
-      return [groupRow];
-    }
-
-    const images = section.images
-      .map(({ repository, image }): ImageRow => {
-        const repositoryDetails = repositoryRowDetails(repository, image);
-        return {
-          id: `image-${stringifyEntityRef(repository)}-${image.imageId}`,
-          kind: 'image',
-          imageId: image.imageId,
-          ...repositoryDetails,
-          repositoryHref: repositoryHref(repository),
-          activeTags: image.activeTags,
-          architecture: image.architecture,
-          lastPushedAt: latestPushDate(image),
-        };
-      })
-      .sort(
-        (first, second) =>
-          first.repositoryName.localeCompare(second.repositoryName) ||
-          first.architecture.localeCompare(second.architecture) ||
-          first.imageId.localeCompare(second.imageId),
-      );
-
-    return [groupRow, ...images];
-  });
-}
-
 function gradeHref(
   pathname: string,
   search: string,
@@ -263,127 +95,6 @@ function gradeHref(
   const query = params.toString();
   return `${pathname}${query ? `?${query}` : ''}${hash}`;
 }
-
-function gradeCell(row: GradeRow, children: ReactNode) {
-  return (
-    <Cell style={gradeCellStyle(gradeToneForId(row.sectionId))}>
-      {children}
-    </Cell>
-  );
-}
-
-const gradeColumns: ColumnConfig<GradeTableRow>[] = [
-  {
-    id: 'name',
-    label: 'Name',
-    width: '2fr',
-    isRowHeader: true,
-    cell: row => {
-      if (row.kind === 'grade') {
-        return gradeCell(
-          row,
-          <Flex align="center" gap="2">
-            <Text
-              as="span"
-              variant="body-medium"
-              aria-hidden="true"
-              style={{ color: 'inherit' }}
-            >
-              {row.expanded ? '⌄' : '›'}
-            </Text>
-            Grade {row.label}
-          </Flex>,
-        );
-      }
-
-      return (
-        <Cell>
-          <Flex align="center" gap="2">
-            <Link href={row.repositoryHref}>{row.repositoryName}</Link>
-            {row.catalogHref && (
-              <Link
-                href={row.catalogHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Open ${row.repositoryName} in Red Hat Catalog`}
-                title="Open in Red Hat Catalog"
-              >
-                <ExternalLinkIcon />
-              </Link>
-            )}
-          </Flex>
-        </Cell>
-      );
-    },
-  },
-  {
-    id: 'tags',
-    label: 'Tags',
-    width: '3fr',
-    cell: row =>
-      row.kind === 'grade' ? (
-        gradeCell(row, null)
-      ) : (
-        <Cell>
-          {row.activeTags.length ? (
-            <TagGroup aria-label={`Tags for ${row.repositoryName}`}>
-              {row.activeTags.map((tag, index) => (
-                <Tag
-                  id={`${row.id}-tag-${index}`}
-                  key={`${tag}-${index}`}
-                  size="small"
-                >
-                  {tag}
-                </Tag>
-              ))}
-            </TagGroup>
-          ) : (
-            <Text as="span" color="secondary">
-              —
-            </Text>
-          )}
-        </Cell>
-      ),
-  },
-  {
-    id: 'architecture',
-    label: 'Architecture',
-    width: '0.9fr',
-    cell: row =>
-      row.kind === 'grade' ? (
-        gradeCell(row, null)
-      ) : (
-        <CellText title={row.architecture} />
-      ),
-  },
-  {
-    id: 'lastPushed',
-    label: 'Last pushed',
-    width: '1.5fr',
-    cell: row =>
-      row.kind === 'grade' ? (
-        gradeCell(
-          row,
-          <Text
-            as="span"
-            variant="body-medium"
-            style={{
-              display: 'block',
-              textAlign: 'right',
-              fontVariantNumeric: 'tabular-nums',
-              color: 'inherit',
-            }}
-          >
-            {row.count.toLocaleString()} image{row.count === 1 ? '' : 's'}
-          </Text>,
-        )
-      ) : (
-        <Cell>
-          <Timestamp value={row.lastPushedAt} />
-        </Cell>
-      ),
-  },
-];
 
 export function Grades() {
   const { entity } = useEntity();
@@ -424,12 +135,17 @@ function ListingGrades({ entity }: { entity: Entity }) {
 }
 
 function RepositoryGrades({ entity }: { entity: Entity }) {
-  const related: RelatedState = {
-    loading: false,
-    entities: [entity],
-    partial: false,
-    retry: () => undefined,
-  };
+  const entities = useMemo(() => [entity], [entity]);
+  const related = useMemo<RelatedState>(
+    () => ({
+      loading: false,
+      entities,
+      partial: false,
+      retry: () => undefined,
+    }),
+    [entities],
+  );
+
   return <GradesContent related={related} />;
 }
 
@@ -450,23 +166,45 @@ function GradesContent({
   related: RelatedState;
   empty?: string;
 }) {
-  const entityRoute = useRouteRef(entityRouteRef);
   const location = useLocation();
   const navigate = useNavigate();
-  const repositories = related.entities.filter(
-    repository => readEntity(repository).value?.category === 'repository',
+  const repositories = useMemo(
+    () =>
+      related.entities.filter(
+        repository => readEntity(repository).value?.category === 'repository',
+      ),
+    [related.entities],
   );
-  const summary = aggregatePortfolioChi(repositories, Date.now());
-  const sections = sectionsFromBuckets(summary.buckets);
+  const portfolioData = useMemo(
+    () => collectPortfolioChiData(repositories),
+    [repositories],
+  );
+  const summary = useMemo(
+    () => summarizePortfolioChiData(portfolioData, Date.now()),
+    [portfolioData],
+  );
+  const sections = useMemo(
+    () => sectionsFromBuckets(portfolioData.buckets),
+    [portfolioData.buckets],
+  );
   const expandedGrade = new URLSearchParams(location.search).get('grade');
-  const rows = gradeRows(sections, expandedGrade, repository =>
-    entityRoute(entityRouteParams(repository)),
+  const currentLocation = useRef(location);
+  currentLocation.current = location;
+
+  const toggleGrade = useCallback(
+    (grade: GradeSectionId, expanded: boolean) => {
+      const current = currentLocation.current;
+      navigate(
+        gradeHref(
+          current.pathname,
+          current.search,
+          current.hash,
+          expanded ? grade : undefined,
+        ),
+      );
+    },
+    [navigate],
   );
-  const { tableProps } = useTable({
-    mode: 'complete',
-    data: rows,
-    paginationOptions: { type: 'none' },
-  });
 
   return (
     <DetailCard title="Container Health Index">
@@ -489,25 +227,16 @@ function GradesContent({
         <AsyncState state={related} empty={empty} showPartialWarning={false}>
           <Flex direction="column" gap="3">
             {sections.length ? (
-              <Table
-                {...tableProps}
-                columnConfig={gradeColumns}
-                rowConfig={{
-                  onClick: row => {
-                    if (row.kind !== 'grade') {
-                      return;
-                    }
-                    navigate(
-                      gradeHref(
-                        location.pathname,
-                        location.search,
-                        location.hash,
-                        row.expanded ? undefined : row.sectionId,
-                      ),
-                    );
-                  },
-                }}
-              />
+              <Flex direction="column" gap="2">
+                {sections.map(section => (
+                  <GradeSectionTable
+                    key={section.id}
+                    section={section}
+                    expanded={expandedGrade === section.id}
+                    onToggle={toggleGrade}
+                  />
+                ))}
+              </Flex>
             ) : (
               <Text as="p" color="secondary">
                 No images with a known grade are available.

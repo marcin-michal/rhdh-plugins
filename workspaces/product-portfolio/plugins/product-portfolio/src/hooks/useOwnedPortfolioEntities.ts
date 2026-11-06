@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useMemo } from 'react';
 import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { readEntity, sortEntities } from '../model/entities';
@@ -24,17 +25,27 @@ import {
 
 export function useOwnedPortfolioEntities(team: Entity) {
   const state = useRelatedEntities(team, 'ownerOf');
-  const managed = state.entities.filter(e =>
-    ['listing', 'repository'].includes(readEntity(e).value?.category ?? ''),
+  const managed = useMemo(
+    () =>
+      state.entities.filter(e =>
+        ['listing', 'repository'].includes(readEntity(e).value?.category ?? ''),
+      ),
+    [state.entities],
+  );
+  const listings = useMemo(
+    () => managed.filter(e => readEntity(e).value?.category === 'listing'),
+    [managed],
+  );
+  const repositories = useMemo(
+    () => managed.filter(e => readEntity(e).value?.category === 'repository'),
+    [managed],
   );
 
   return {
     ...state,
     entities: managed,
-    listings: managed.filter(e => readEntity(e).value?.category === 'listing'),
-    repositories: managed.filter(
-      e => readEntity(e).value?.category === 'repository',
-    ),
+    listings,
+    repositories,
   };
 }
 
@@ -44,17 +55,21 @@ export function useOwnedPortfolioRepositories(team: Entity) {
     owned.listings,
     PYXIS_RELATIONS.hasRepository,
   );
-  const repositories = new Map<string, Entity>();
+  const repositories = useMemo(() => {
+    const unique = new Map<string, Entity>();
 
-  for (const repository of [...owned.repositories, ...linked.entities]) {
-    if (readEntity(repository).value?.category === 'repository') {
-      repositories.set(stringifyEntityRef(repository), repository);
+    for (const repository of [...owned.repositories, ...linked.entities]) {
+      if (readEntity(repository).value?.category === 'repository') {
+        unique.set(stringifyEntityRef(repository), repository);
+      }
     }
-  }
+
+    return [...unique.values()].sort(sortEntities);
+  }, [linked.entities, owned.repositories]);
 
   return {
     loading: owned.loading || linked.loading,
-    entities: [...repositories.values()].sort(sortEntities),
+    entities: repositories,
     partial: owned.partial || linked.partial,
     error: owned.error ?? linked.error,
     retry: () => {

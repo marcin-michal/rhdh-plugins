@@ -21,13 +21,13 @@ dynamicPlugins:
         - path: /product-portfolio
           title: Product Portfolio
           mountPoint: entity.page.product-portfolio-overview
-        - path: /product-portfolio/repositories
+        - path: /repositories
           title: Repositories
           mountPoint: entity.page.product-portfolio-repositories
-        - path: /product-portfolio/product-listings
+        - path: /product-listings
           title: Product listings
           mountPoint: entity.page.product-portfolio-product-listings
-        - path: /product-portfolio/grades
+        - path: /grades
           title: Grades
           mountPoint: entity.page.product-portfolio-grades
       mountPoints:

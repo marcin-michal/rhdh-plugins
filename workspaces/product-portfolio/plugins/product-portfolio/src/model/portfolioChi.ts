@@ -42,19 +42,24 @@ export interface PortfolioChiSummary {
   latestObservationAt: string | null;
 }
 
+export interface PortfolioChiData {
+  inputs: Parameters<typeof aggregateRepositoryChi>[0];
+  buckets: PortfolioChiBucket[];
+  snapshotsUsed: number;
+  latestObservationAt: string | null;
+}
+
 /** Combines repository-level CHI snapshots for listing, repository, or team views. */
-export function aggregatePortfolioChi(
+export function collectPortfolioChiData(
   repositories: readonly Entity[],
-  now: number,
-): PortfolioChiSummary {
+): PortfolioChiData {
   const unique = new Map(
     repositories.map(entity => [stringifyEntityRef(entity), entity]),
   );
   const inputs = [...unique].map(([repositoryRef, entity]) => ({
     repositoryRef,
-    projection: readRepositoryChi(entity, now).projection ?? null,
+    projection: readRepositoryChi(entity, Date.now()).projection ?? null,
   }));
-  const aggregate = aggregateRepositoryChi(inputs, now);
 
   const latestObservationAt = inputs.reduce<string | null>((latest, input) => {
     const observedAt = input.projection?.snapshot?.observedAt;
@@ -105,9 +110,28 @@ export function aggregatePortfolioChi(
     .filter(bucket => bucket.images.length > 0);
 
   return {
-    aggregate,
+    inputs,
     buckets,
     snapshotsUsed: inputs.filter(i => i.projection?.snapshot).length,
     latestObservationAt,
   };
+}
+
+export function summarizePortfolioChiData(
+  data: PortfolioChiData,
+  now: number,
+): PortfolioChiSummary {
+  return {
+    aggregate: aggregateRepositoryChi(data.inputs, now),
+    buckets: data.buckets,
+    snapshotsUsed: data.snapshotsUsed,
+    latestObservationAt: data.latestObservationAt,
+  };
+}
+
+export function aggregatePortfolioChi(
+  repositories: readonly Entity[],
+  now: number,
+): PortfolioChiSummary {
+  return summarizePortfolioChiData(collectPortfolioChiData(repositories), now);
 }

@@ -42,15 +42,17 @@ describe('useOwnedPortfolioEntities', () => {
           .filter((entity): entity is Entity => Boolean(entity)),
       }),
     );
+    const catalogApi = { getEntitiesByRefs };
     const wrapper = ({ children }: PropsWithChildren) => (
-      <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+      <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         {children}
       </TestApiProvider>
     );
 
-    const { result } = renderHook(() => useOwnedPortfolioEntities(team), {
-      wrapper,
-    });
+    const { result, rerender } = renderHook(
+      () => useOwnedPortfolioEntities(team),
+      { wrapper },
+    );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.listings.map(entity => entity.metadata.name)).toEqual(
@@ -62,6 +64,16 @@ describe('useOwnedPortfolioEntities', () => {
       result.current.entities.every(entity => entity.kind !== 'User'),
     ).toBe(true);
     expect(result.current.partial).toBe(false);
+
+    const { managed, listings, repositories } = {
+      managed: result.current.entities,
+      listings: result.current.listings,
+      repositories: result.current.repositories,
+    };
+    rerender();
+    expect(result.current.entities).toBe(managed);
+    expect(result.current.listings).toBe(listings);
+    expect(result.current.repositories).toBe(repositories);
   });
 
   it('includes repositories linked from owned listings and deduplicates direct ownership', async () => {
@@ -77,20 +89,26 @@ describe('useOwnedPortfolioEntities', () => {
           .filter((entity): entity is Entity => Boolean(entity)),
       }),
     );
+    const catalogApi = { getEntitiesByRefs };
     const wrapper = ({ children }: PropsWithChildren) => (
-      <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+      <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         {children}
       </TestApiProvider>
     );
 
-    const { result } = renderHook(() => useOwnedPortfolioRepositories(team), {
-      wrapper,
-    });
+    const { result, rerender } = renderHook(
+      () => useOwnedPortfolioRepositories(team),
+      { wrapper },
+    );
 
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.entities.map(entity => entity.metadata.name)).toEqual(
       ['repository-1', 'repository-3', 'repository-5'],
     );
     expect(result.current.partial).toBe(false);
+
+    const repositories = result.current.entities;
+    rerender();
+    expect(result.current.entities).toBe(repositories);
   });
 });
