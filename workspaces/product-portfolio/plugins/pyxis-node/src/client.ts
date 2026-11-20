@@ -248,12 +248,17 @@ export class PyxisClient implements PyxisReadClient, PyxisChiReadClient {
         readFile(config.keyFile),
         config.caFile ? readFile(config.caFile) : undefined,
       ]);
-      createSecureContext({ cert, key, ca });
+      const secureContext = createSecureContext({
+        cert,
+        key,
+        ca,
+        passphrase: config.keyPassphrase,
+      });
 
       return new PyxisClient(
         config,
         new Agent({
-          connect: { cert, key, ca, rejectUnauthorized: true },
+          connect: { secureContext, rejectUnauthorized: true },
           connections: config.concurrency,
         }),
         sourceInstance,

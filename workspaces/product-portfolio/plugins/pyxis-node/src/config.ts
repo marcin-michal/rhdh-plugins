@@ -35,6 +35,7 @@ const sourceSchema = z
       }),
     certificateFile: z.string().min(1),
     keyFile: z.string().min(1),
+    keyPassphrase: z.string().min(1).optional(),
     caFile: z.string().min(1).optional(),
     pageSize: z.number().int().min(1).max(500).default(100),
     concurrency: z.number().int().min(1).max(32).default(4),
@@ -125,6 +126,7 @@ export interface PyxisSourceConfig {
   endpoint: string;
   certificateFile: string;
   keyFile: string;
+  keyPassphrase?: string;
   caFile?: string;
   pageSize: number;
   concurrency: number;

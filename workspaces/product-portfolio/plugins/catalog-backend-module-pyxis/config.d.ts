@@ -24,6 +24,11 @@ export interface Config {
         certificateFile: string;
         /** @visibility secret */
         keyFile: string;
+        /**
+         * Passphrase for an encrypted client private key.
+         * @visibility secret
+         */
+        keyPassphrase?: string;
         /** @visibility secret */
         caFile?: string;
         pageSize?: number;

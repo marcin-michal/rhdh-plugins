@@ -31,6 +31,7 @@ describe('actual-tls actual TLS', () => {
   let directory: string;
   let server: Server;
   let config: PyxisSourceConfig;
+  let encryptedConfig: PyxisSourceConfig;
   let endpoint: string;
   let holdResponse = false;
 
@@ -158,22 +159,41 @@ describe('actual-tls actual TLS', () => {
     }
 
     endpoint = `https://localhost:${address.port}`;
-    config = readPyxisConfig(
+    const passphrase = 'pyxis-test-passphrase';
+    openssl(
+      'pkey',
+      '-in',
+      'client.key',
+      '-aes-256-cbc',
+      '-passout',
+      `pass:${passphrase}`,
+      '-out',
+      'client.encrypted.key',
+    );
+    const source = {
+      endpoint,
+      certificateFile: join(directory, 'client.crt'),
+      keyFile: join(directory, 'client.key'),
+      caFile: join(directory, 'ca.crt'),
+      maxAttempts: 1,
+      attemptTimeoutMs: 1000,
+    };
+    const { sources } = readPyxisConfig(
       new ConfigReader({
         pyxis: {
           sources: {
-            internal: {
-              endpoint,
-              certificateFile: join(directory, 'client.crt'),
-              keyFile: join(directory, 'client.key'),
-              caFile: join(directory, 'ca.crt'),
-              maxAttempts: 1,
-              attemptTimeoutMs: 1000,
+            internal: source,
+            encrypted: {
+              ...source,
+              keyFile: join(directory, 'client.encrypted.key'),
+              keyPassphrase: passphrase,
             },
           },
         },
       }),
-    ).sources.internal;
+    );
+    config = sources.internal;
+    encryptedConfig = sources.encrypted;
   }, 20000);
 
   afterAll(async () => {
@@ -186,15 +206,33 @@ describe('actual-tls actual TLS', () => {
     }
   });
 
-  it('performs verified mTLS and disposes sockets', async () => {
-    const client = await PyxisClient.create(config, 'internal');
-    expect(
-      (await client.getRepository(baseline.repositories[0]._id, {})).state,
-    ).toBe('found');
-    await client.close();
+  it.each(['unencrypted', 'encrypted'])(
+    'performs verified mTLS with an %s key and disposes sockets',
+    async keyType => {
+      const client = await PyxisClient.create(
+        keyType === 'encrypted' ? encryptedConfig : config,
+        'internal',
+      );
+      try {
+        expect(
+          (await client.getRepository(baseline.repositories[0]._id, {})).state,
+        ).toBe('found');
+      } finally {
+        await client.close();
+      }
+      await expect(
+        client.getRepository(baseline.repositories[0]._id, {}),
+      ).rejects.toThrow();
+    },
+  );
+
+  it('rejects an incorrect passphrase before requests', async () => {
     await expect(
-      client.getRepository(baseline.repositories[0]._id, {}),
-    ).rejects.toThrow();
+      PyxisClient.create(
+        { ...encryptedConfig, keyPassphrase: 'wrong-test-passphrase' },
+        'internal',
+      ),
+    ).rejects.toThrow('pyxis-invalid-tls-material');
   });
 
   it.each(['caller', 'shutdown', 'timeout'])(

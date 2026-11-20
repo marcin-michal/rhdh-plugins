@@ -368,6 +368,8 @@ export interface PyxisSourceConfig {
   // (undocumented)
   keyFile: string;
   // (undocumented)
+  keyPassphrase?: string;
+  // (undocumented)
   maxAttempts: number;
   // (undocumented)
   maxPages: number;
