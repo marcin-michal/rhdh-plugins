@@ -16,13 +16,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  EntityListProvider,
-  useEntityList,
-  type DefaultEntityFilters,
-} from '@backstage/plugin-catalog-react';
-import { Box, Button, Flex } from '@backstage/ui';
-import { PortfolioFilter, PortfolioScopeFilter } from './filters';
+import { Box, Flex } from '@backstage/ui';
 import {
   isPortfolioCategory,
   portfolioCategories,
@@ -31,24 +25,23 @@ import {
   type FilterState,
   type PortfolioCategory,
 } from './filterState';
-import { readEntity, sourceKey } from '../model/entities';
-import { QualityNotice } from '../components/shared/QualityNotice';
 import { PortfolioTable } from './PortfolioTable';
-import type { PortfolioTeam } from './columns';
 import { PortfolioToolbar, type PortfolioKindOption } from './PortfolioToolbar';
-
-interface Filters extends DefaultEntityFilters {
-  scope?: PortfolioScopeFilter;
-  portfolio?: PortfolioFilter;
-}
 
 const categoryLabels: Record<PortfolioCategory, string> = {
   listing: 'Product listings',
   repository: 'Repositories',
   team: 'Teams',
 };
+const categoryOptions: PortfolioKindOption[] = portfolioCategories.map(
+  category => ({
+    id: category,
+    label: categoryLabels[category],
+  }),
+);
 
-function PortfolioContent() {
+/** Dedicated source-scoped catalog page. @public */
+export function ProductPortfolioPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const state = useMemo(
@@ -56,10 +49,7 @@ function PortfolioContent() {
     [location.search],
   );
   const [query, setQuery] = useState(state.q);
-  const [retry, setRetry] = useState(0);
   const selectedCategory = state.category;
-  const { updateFilters, backendEntities, entities, loading, error } =
-    useEntityList<Filters>();
 
   useEffect(() => {
     setQuery(state.q);
@@ -90,79 +80,6 @@ function PortfolioContent() {
     return () => window.clearTimeout(timeout);
   }, [navigateToFilters, query, selectedCategory, state.q]);
 
-  const filterState = useMemo<FilterState>(
-    () => ({
-      q: state.q,
-      category: selectedCategory,
-    }),
-    [selectedCategory, state.q],
-  );
-
-  useEffect(() => {
-    updateFilters({
-      scope: new PortfolioScopeFilter(),
-      portfolio: new PortfolioFilter(filterState),
-    });
-  }, [filterState, retry, updateFilters]);
-
-  const categoryCounts = useMemo(() => {
-    const counts: Record<PortfolioCategory, number> = {
-      listing: 0,
-      repository: 0,
-      team: 0,
-    };
-
-    for (const entity of backendEntities) {
-      const category = readEntity(entity).value?.category;
-      if (category && isPortfolioCategory(category)) {
-        counts[category] += 1;
-      }
-    }
-
-    return counts;
-  }, [backendEntities]);
-
-  const selectedCount = categoryCounts[selectedCategory];
-  const malformed = backendEntities.filter(
-    entity => readEntity(entity).error,
-  ).length;
-
-  const filterKey = serializeFilterState(filterState);
-  const teamDirectory = useMemo(() => {
-    const teams = new Map<string, PortfolioTeam>();
-    for (const entity of backendEntities) {
-      const model = readEntity(entity).value;
-      if (model?.category !== 'team') {
-        continue;
-      }
-
-      const record = model.projection.record;
-      const name =
-        record && 'name' in record && typeof record.name === 'string'
-          ? record.name.trim()
-          : '';
-      const label = name || entity.metadata.title?.trim() || '';
-      if (!label) {
-        continue;
-      }
-
-      const team: PortfolioTeam = { entity, ref: model.ref, label };
-      teams.set(model.ref, team);
-      teams.set(sourceKey(model.projection.source), team);
-    }
-    return teams;
-  }, [backendEntities]);
-
-  const categoryOptions = useMemo<PortfolioKindOption[]>(
-    () =>
-      portfolioCategories.map(category => ({
-        id: category,
-        label: categoryLabels[category],
-        count: categoryCounts[category],
-      })),
-    [categoryCounts],
-  );
-
   return (
     <Box p={{ initial: '4', md: '6' }}>
       <Flex direction="column" gap="4">
@@ -170,9 +87,6 @@ function PortfolioContent() {
           options={categoryOptions}
           selectedKind={selectedCategory}
           query={query}
-          currentCount={entities.length}
-          totalCount={selectedCount}
-          loading={loading}
           hasActiveFilters={Boolean(query)}
           onKindChange={category => {
             if (isPortfolioCategory(category)) {
@@ -186,43 +100,12 @@ function PortfolioContent() {
           }}
         />
 
-        {malformed > 0 && (
-          <QualityNotice
-            error
-            message={`${malformed} catalog ${
-              malformed === 1 ? 'entity does' : 'entities do'
-            } not match the managed product portfolio schema.`}
-          />
-        )}
-
-        {error ? (
-          <Flex direction="column" gap="2">
-            <QualityNotice
-              error
-              message="Product portfolio catalog data could not be loaded."
-            />
-            <Button onPress={() => setRetry(value => value + 1)}>Retry</Button>
-          </Flex>
-        ) : (
-          <PortfolioTable
-            key={filterKey}
-            kind={selectedCategory}
-            entities={entities}
-            teamDirectory={teamDirectory}
-            title={`${categoryLabels[selectedCategory]} (${entities.length})`}
-            loading={loading}
-          />
-        )}
+        <PortfolioTable
+          kind={selectedCategory}
+          search={state.q}
+          title={categoryLabels[selectedCategory]}
+        />
       </Flex>
     </Box>
-  );
-}
-
-/** Dedicated source-scoped catalog page. @public */
-export function ProductPortfolioPage() {
-  return (
-    <EntityListProvider pagination={false}>
-      <PortfolioContent />
-    </EntityListProvider>
   );
 }

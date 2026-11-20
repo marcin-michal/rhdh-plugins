@@ -15,23 +15,25 @@
  */
 
 import { useMemo } from 'react';
-import type { Entity } from '@backstage/catalog-model';
-import { useRouteRef } from '@backstage/core-plugin-api';
+import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import {
+  catalogApiRef,
   entityRouteParams,
   entityRouteRef,
+  type CatalogApi,
 } from '@backstage/plugin-catalog-react';
 import {
   Box,
+  Button,
   Card,
   CardBody,
   Flex,
   Table,
   Text,
-  type SortDescriptor,
   useTable,
 } from '@backstage/ui';
-import { sortEntities } from '../model/entities';
+import { readEntity } from '../model/entities';
+import { QualityNotice } from '../components/shared/QualityNotice';
 import {
   createPortfolioRows,
   portfolioColumnsByKind,
@@ -39,55 +41,98 @@ import {
   type PortfolioTableRow,
 } from './columns';
 import type { PortfolioCategory } from './filterState';
+import {
+  fetchPortfolioTeamDirectory,
+  portfolioEntityFilter,
+  PORTFOLIO_ENTITY_FIELDS,
+  PORTFOLIO_SEARCH_FIELDS,
+} from './portfolioCatalogApi';
 
 interface PortfolioTableProps {
   kind: PortfolioCategory;
-  entities: Entity[];
-  teamDirectory: ReadonlyMap<string, PortfolioTeam>;
+  search: string;
   title: string;
-  loading: boolean;
 }
 
-function sortPortfolioRows(
-  rows: PortfolioTableRow[],
-  sort: SortDescriptor,
-): PortfolioTableRow[] {
-  if (sort.column !== 'name') {
-    return rows;
-  }
+type TeamDirectory = ReadonlyMap<string, PortfolioTeam>;
+const emptyTeamDirectory: TeamDirectory = new Map();
 
-  const direction = sort.direction === 'descending' ? -1 : 1;
-  return [...rows].sort((first, second) => {
-    return direction * sortEntities(first.entity, second.entity);
-  });
-}
+export function PortfolioTable(props: PortfolioTableProps) {
+  const catalogApi = useApi(catalogApiRef);
 
-export function PortfolioTable({
-  kind,
-  entities,
-  teamDirectory,
-  title,
-  loading,
-}: PortfolioTableProps) {
-  const entityRoute = useRouteRef(entityRouteRef);
-  const rows = useMemo(
-    () =>
-      createPortfolioRows(entities, teamDirectory, entity =>
-        entityRoute(entityRouteParams(entity)),
-      ),
-    [entities, entityRoute, teamDirectory],
+  const loadTeamDirectory = useMemo(() => {
+    let directory: Promise<TeamDirectory> | undefined;
+    return () => {
+      directory ??= fetchPortfolioTeamDirectory(catalogApi).catch(error => {
+        directory = undefined;
+        throw error;
+      });
+
+      return directory;
+    };
+  }, [catalogApi]);
+
+  return (
+    <PortfolioResults
+      key={props.kind}
+      {...props}
+      catalogApi={catalogApi}
+      loadTeamDirectory={loadTeamDirectory}
+    />
   );
-  const { tableProps } = useTable({
-    mode: 'complete',
-    data: rows,
+}
+
+function PortfolioResults({
+  kind,
+  search,
+  title,
+  catalogApi,
+  loadTeamDirectory,
+}: PortfolioTableProps & {
+  catalogApi: CatalogApi;
+  loadTeamDirectory: () => Promise<TeamDirectory>;
+}) {
+  const entityRoute = useRouteRef(entityRouteRef);
+  const { tableProps, reload } = useTable<PortfolioTableRow>({
+    mode: 'offset',
+    search,
     initialSort: { column: 'name', direction: 'ascending' },
-    sortFn: sortPortfolioRows,
+    getData: async ({ offset, pageSize, sort, search: searchTerm }) => {
+      const term = searchTerm.trim();
+      const [response, teamDirectory] = await Promise.all([
+        catalogApi.queryEntities({
+          filter: portfolioEntityFilter(kind),
+          limit: pageSize,
+          offset,
+          orderFields: {
+            field: 'metadata.title',
+            order: sort?.direction === 'descending' ? 'desc' : 'asc',
+          },
+          fields: PORTFOLIO_ENTITY_FIELDS,
+          fullTextFilter: term
+            ? { term, fields: PORTFOLIO_SEARCH_FIELDS }
+            : undefined,
+        }),
+        kind === 'team' ? emptyTeamDirectory : loadTeamDirectory(),
+      ]);
+
+      const rows = createPortfolioRows(response.items, teamDirectory, entity =>
+        entityRoute(entityRouteParams(entity)),
+      );
+
+      return { data: rows, totalCount: response.totalItems };
+    },
     paginationOptions: {
-      type: 'page',
       pageSize: 20,
       pageSizeOptions: [20, 50, 100],
     },
   });
+
+  const malformedCount = tableProps.isStale
+    ? 0
+    : (tableProps.data ?? []).filter(row => readEntity(row.entity).error)
+        .length;
+
   const emptyState = (
     <Box p="8" role="status">
       <Flex align="center" justify="center">
@@ -98,26 +143,42 @@ export function PortfolioTable({
     </Box>
   );
 
+  if (tableProps.error) {
+    return (
+      <Flex direction="column" gap="2">
+        <QualityNotice
+          error
+          message="Product portfolio catalog data could not be loaded."
+        />
+        <Button onPress={reload}>Retry</Button>
+      </Flex>
+    );
+  }
+
   return (
-    <Card aria-labelledby="portfolio-results-title">
-      <CardBody>
-        <Flex direction="column" gap="4">
-          <Text as="h2" id="portfolio-results-title" variant="title-small">
-            {title}
-          </Text>
-          <Table
-            {...tableProps}
-            columnConfig={portfolioColumnsByKind[kind]}
-            data={
-              loading && tableProps.data?.length === 0
-                ? undefined
-                : tableProps.data
-            }
-            loading={loading}
-            emptyState={emptyState}
-          />
-        </Flex>
-      </CardBody>
-    </Card>
+    <Flex direction="column" gap="4">
+      {malformedCount > 0 && (
+        <QualityNotice
+          error
+          message={`${malformedCount} catalog ${
+            malformedCount === 1 ? 'entity does' : 'entities do'
+          } not match the managed product portfolio schema on this page.`}
+        />
+      )}
+      <Card aria-labelledby="portfolio-results-title">
+        <CardBody>
+          <Flex direction="column" gap="4">
+            <Text as="h2" id="portfolio-results-title" variant="title-small">
+              {title}
+            </Text>
+            <Table
+              {...tableProps}
+              columnConfig={portfolioColumnsByKind[kind]}
+              emptyState={emptyState}
+            />
+          </Flex>
+        </CardBody>
+      </Card>
+    </Flex>
   );
 }

@@ -30,16 +30,12 @@ import {
 export interface PortfolioKindOption {
   id: string;
   label: string;
-  count: number;
 }
 
 interface PortfolioToolbarProps {
   options: PortfolioKindOption[];
   selectedKind: string;
   query: string;
-  currentCount: number;
-  totalCount: number;
-  loading: boolean;
   hasActiveFilters: boolean;
   onKindChange: (kind: string) => void;
   onQueryChange: (query: string) => void;
@@ -50,9 +46,6 @@ export function PortfolioToolbar({
   options,
   selectedKind,
   query,
-  currentCount,
-  totalCount,
-  loading,
   hasActiveFilters,
   onKindChange,
   onQueryChange,
@@ -62,9 +55,6 @@ export function PortfolioToolbar({
     options
       .find(option => option.id === selectedKind)
       ?.label.toLocaleLowerCase('en-US') ?? 'entries';
-  const resultSummary = loading
-    ? `Loading ${selectedLabel}…`
-    : `Showing ${currentCount} of ${totalCount} ${selectedLabel}`;
 
   return (
     <Card role="search" aria-label="Product portfolio search">
@@ -88,19 +78,9 @@ export function PortfolioToolbar({
               >
                 {options.map(option => (
                   <ToggleButton key={option.id} id={option.id} size="small">
-                    <Flex
-                      align="center"
-                      justify="between"
-                      gap="2"
-                      style={{ width: '100%' }}
-                    >
-                      <Text as="div" variant="body-small">
-                        {option.label}
-                      </Text>
-                      <Text as="div" variant="body-small" color="secondary">
-                        {option.count}
-                      </Text>
-                    </Flex>
+                    <Text as="div" variant="body-small">
+                      {option.label}
+                    </Text>
                   </ToggleButton>
                 ))}
               </ToggleButtonGroup>
@@ -124,12 +104,6 @@ export function PortfolioToolbar({
                 </Button>
               )}
             </Flex>
-          </Grid.Item>
-
-          <Grid.Item colSpan={{ md: '2' }}>
-            <Text as="p" variant="body-small" color="secondary" role="status">
-              {resultSummary}
-            </Text>
           </Grid.Item>
         </Grid.Root>
       </CardBody>

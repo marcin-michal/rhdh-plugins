@@ -66,6 +66,7 @@
     "react-router-dom": "^6.0.0"
   },
   "devDependencies": {
+    "@backstage/catalog-client": "1.14.0",
     "@backstage/cli": "0.36.0",
     "@backstage/frontend-test-utils": "0.5.1",
     "@backstage/test-utils": "1.7.16",

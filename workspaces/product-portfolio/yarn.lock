@@ -8159,6 +8159,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@red-hat-developer-hub/backstage-plugin-product-portfolio@workspace:plugins/product-portfolio"
   dependencies:
+    "@backstage/catalog-client": "npm:1.14.0"
     "@backstage/catalog-model": "npm:1.7.7"
     "@backstage/cli": "npm:0.36.0"
     "@backstage/core-components": "npm:0.18.8"

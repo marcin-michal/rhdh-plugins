@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import type { QueryEntitiesResponse } from '@backstage/catalog-client';
+import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
 import { coreExtensionData } from '@backstage/frontend-plugin-api';
 import {
   createExtensionTester,
@@ -23,6 +25,7 @@ import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import catalog from '@backstage/plugin-catalog/alpha';
+import { PYXIS_ANNOTATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import plugin from './alpha';
 import { listingOverview } from './extensions/listingOverview';
 import { repositoryOverview } from './extensions/repositoryOverview';
@@ -108,11 +111,12 @@ describe('portfolio NFS wiring', () => {
   });
 
   it('mounts the lazy page in a real NFS test app with a scoped catalog request', async () => {
-    const getEntities = jest.fn(async () => ({ items: [] }));
+    const catalogApi = new InMemoryCatalogClient();
+    const queryEntities = jest.spyOn(catalogApi, 'queryEntities');
     renderTestApp({
       features: [catalog, plugin],
       initialRouteEntries: ['/product-portfolio'],
-      apis: [[catalogApiRef, { getEntities }]],
+      apis: [[catalogApiRef, catalogApi]],
     });
 
     await waitFor(() =>
@@ -122,32 +126,36 @@ describe('portfolio NFS wiring', () => {
         ),
       ).toBeInTheDocument(),
     );
-    expect(getEntities).toHaveBeenCalledWith(
+    expect(queryEntities).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: expect.objectContaining({ 'metadata.namespace': 'pyxis' }),
+        filter: expect.objectContaining({
+          'metadata.namespace': 'pyxis',
+          [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: 'listing',
+        }),
+        limit: 20,
+        offset: 0,
       }),
     );
   });
 
   it('keeps the empty state hidden while the scoped catalog request is pending', async () => {
-    let resolveEntities!: (response: {
-      items: ReturnType<typeof portfolioFixtures>;
-    }) => void;
-    const pendingEntities = new Promise<{
-      items: ReturnType<typeof portfolioFixtures>;
-    }>(resolve => {
+    let resolveEntities!: (response: QueryEntitiesResponse) => void;
+    const pendingEntities = new Promise<QueryEntitiesResponse>(resolve => {
       resolveEntities = resolve;
     });
-    const getEntities = jest.fn(() => pendingEntities);
+    const catalogApi = new InMemoryCatalogClient();
+    const queryEntities = jest
+      .spyOn(catalogApi, 'queryEntities')
+      .mockReturnValueOnce(pendingEntities);
 
     renderTestApp({
       features: [catalog, plugin],
       initialRouteEntries: ['/product-portfolio'],
-      apis: [[catalogApiRef, { getEntities }]],
+      apis: [[catalogApiRef, catalogApi]],
     });
 
-    await waitFor(() => expect(getEntities).toHaveBeenCalled());
-    expect(screen.getByText('Loading product listings…')).toBeInTheDocument();
+    await waitFor(() => expect(queryEntities).toHaveBeenCalled());
+    expect(screen.getByRole('grid')).toHaveAttribute('data-loading', 'true');
     expect(
       screen.queryByText(
         'No matching entries. Adjust the search or choose another kind.',
@@ -155,22 +163,26 @@ describe('portfolio NFS wiring', () => {
     ).not.toBeInTheDocument();
 
     await act(async () => {
-      resolveEntities({ items: portfolioFixtures(13) });
+      resolveEntities({ items: [], totalItems: 0, pageInfo: {} });
     });
 
-    expect(await screen.findByText('Listing 1')).toBeInTheDocument();
     expect(
-      screen.queryByText('Loading product portfolio entries…'),
-    ).not.toBeInTheDocument();
+      await screen.findByText(
+        'No matching entries. Adjust the search or choose another kind.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('lists managed entity kinds and filters rows by kind and name', async () => {
     const user = userEvent.setup();
-    const getEntities = jest.fn(async () => ({ items: portfolioFixtures(13) }));
+    const catalogApi = new InMemoryCatalogClient({
+      entities: portfolioFixtures(13),
+    });
+    const queryEntities = jest.spyOn(catalogApi, 'queryEntities');
     renderTestApp({
       features: [catalog, plugin],
       initialRouteEntries: ['/product-portfolio'],
-      apis: [[catalogApiRef, { getEntities }]],
+      apis: [[catalogApiRef, catalogApi]],
     });
 
     expect(await screen.findByText('Listing 1')).toBeInTheDocument();
@@ -183,10 +195,8 @@ describe('portfolio NFS wiring', () => {
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('radio', { name: /Repositories/ }));
-    await waitFor(() =>
-      expect(screen.queryByText('Listing 1')).not.toBeInTheDocument(),
-    );
-    expect(screen.getByText('Repository 1')).toBeInTheDocument();
+    expect(await screen.findByText('Repository 1')).toBeInTheDocument();
+    expect(screen.queryByText('Listing 1')).not.toBeInTheDocument();
     expect(screen.queryByText('Team 1')).not.toBeInTheDocument();
 
     await user.type(
@@ -197,6 +207,16 @@ describe('portfolio NFS wiring', () => {
       expect(screen.queryByText('Repository 2')).not.toBeInTheDocument(),
     );
     expect(screen.getByText('Repository 1')).toBeInTheDocument();
+    expect(queryEntities).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filter: expect.objectContaining({
+          [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]:
+            'repository',
+        }),
+        offset: 0,
+        fullTextFilter: expect.objectContaining({ term: 'repository-1' }),
+      }),
+    );
 
     await user.clear(screen.getByRole('textbox', { name: 'Search by name' }));
     await user.click(screen.getByRole('radio', { name: /Teams/ }));

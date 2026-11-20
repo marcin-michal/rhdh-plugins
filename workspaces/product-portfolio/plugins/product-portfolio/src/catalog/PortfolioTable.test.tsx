@@ -15,96 +15,67 @@
  */
 
 import type { Entity } from '@backstage/catalog-model';
-import { entityRouteRef } from '@backstage/plugin-catalog-react';
-import { renderInTestApp } from '@backstage/test-utils';
-import { screen, waitFor } from '@testing-library/react';
+import type { QueryEntitiesResponse } from '@backstage/catalog-client';
+import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
+import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
+import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { readEntity, sourceKey } from '../model/entities';
+import { PYXIS_ANNOTATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import {
   fixtureEntity,
   observedAt,
   portfolioFixtures,
 } from '../testUtils/fixtures';
 import { PortfolioTable } from './PortfolioTable';
-import type { PortfolioTeam } from './columns';
 import type { PortfolioCategory } from './filterState';
 
 const emptyMessage =
   'No matching entries. Adjust the search or choose another kind.';
 
-function teamDirectoryFor(entities: Entity[]): Map<string, PortfolioTeam> {
-  const directory = new Map<string, PortfolioTeam>();
-  for (const entity of entities) {
-    const model = readEntity(entity).value;
-    if (model?.category !== 'team') {
-      continue;
-    }
-
-    const record = model.projection.record;
-    const name =
-      record && 'name' in record && typeof record.name === 'string'
-        ? record.name.trim()
-        : '';
-    const label = name || entity.metadata.title?.trim() || '';
-    if (!label) {
-      continue;
-    }
-
-    const team: PortfolioTeam = { entity, ref: model.ref, label };
-    directory.set(model.ref, team);
-    directory.set(sourceKey(model.projection.source), team);
-  }
-  return directory;
-}
-
 async function renderTable(
   kind: PortfolioCategory,
   entities: Entity[],
-  teamDirectory: ReadonlyMap<string, PortfolioTeam> = new Map(),
-  loading = false,
+  catalogApi = new InMemoryCatalogClient({ entities }),
 ) {
-  return renderInTestApp(
-    <PortfolioTable
-      kind={kind}
-      entities={entities}
-      teamDirectory={teamDirectory}
-      title={kind}
-      loading={loading}
-    />,
+  const queryEntities = jest.spyOn(catalogApi, 'queryEntities');
+  const streamEntities = jest.spyOn(catalogApi, 'streamEntities');
+  await renderInTestApp(
+    <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
+      <PortfolioTable kind={kind} search="" title={kind} />
+    </TestApiProvider>,
     {
       mountedRoutes: {
         '/catalog/:namespace/:kind/:name': entityRouteRef,
       },
     },
   );
+  return { queryEntities, streamEntities };
 }
 
 describe('PortfolioTable', () => {
   it('shows a loading table instead of the empty state until the first result arrives', async () => {
-    const teamDirectory = new Map<string, PortfolioTeam>();
-    const rendered = await renderTable('listing', [], teamDirectory, true);
+    let resolveQuery!: (response: QueryEntitiesResponse) => void;
+    const pendingResponse = new Promise<QueryEntitiesResponse>(resolve => {
+      resolveQuery = resolve;
+    });
+    const catalogApi = new InMemoryCatalogClient();
+    jest
+      .spyOn(catalogApi, 'queryEntities')
+      .mockReturnValueOnce(pendingResponse);
 
+    await renderTable('listing', [], catalogApi);
     expect(screen.queryByText(emptyMessage)).not.toBeInTheDocument();
 
-    rendered.rerender(
-      <PortfolioTable
-        kind="listing"
-        entities={[]}
-        teamDirectory={teamDirectory}
-        title="Product listings"
-        loading={false}
-      />,
-    );
-
-    expect(screen.getByText(emptyMessage)).toBeInTheDocument();
+    await act(async () => {
+      resolveQuery({ items: [], totalItems: 0, pageInfo: {} });
+    });
+    expect(await screen.findByText(emptyMessage)).toBeInTheDocument();
   });
 
   it('shows listing columns and uses the repository and team counts', async () => {
     const entities = portfolioFixtures(13);
-    const listing = entities.find(
-      entity => entity.metadata.name === 'listing-1',
-    )!;
-    await renderTable('listing', [listing], teamDirectoryFor(entities));
+    await renderTable('listing', entities);
 
     const row = await screen.findByRole('row', { name: /Listing 1/ });
     expect(row).toHaveTextContent('Short description for listing 1');
@@ -134,10 +105,7 @@ describe('PortfolioTable', () => {
 
   it('shows repository path, team name, and published state', async () => {
     const entities = portfolioFixtures(13);
-    const repository = entities.find(
-      entity => entity.metadata.name === 'repository-1',
-    )!;
-    await renderTable('repository', [repository], teamDirectoryFor(entities));
+    await renderTable('repository', entities);
 
     const row = await screen.findByRole('row', { name: /Repository 1/ });
     expect(row).toHaveTextContent('registry.redhat.io/portfolio/repository-1');
@@ -153,8 +121,10 @@ describe('PortfolioTable', () => {
 
   it('shows team member count and last-updated time', async () => {
     const entities = portfolioFixtures(13);
-    const team = entities.find(entity => entity.metadata.name === 'team-1')!;
-    await renderTable('team', [team]);
+    const { queryEntities, streamEntities } = await renderTable(
+      'team',
+      entities,
+    );
 
     const row = await screen.findByRole('row', { name: /Team 1/ });
     expect(row).toHaveTextContent('2');
@@ -167,38 +137,88 @@ describe('PortfolioTable', () => {
     expect(
       document.querySelector(`time[datetime="${observedAt}"]`),
     ).toBeInTheDocument();
+    expect(queryEntities).toHaveBeenCalledTimes(1);
+    expect(streamEntities).not.toHaveBeenCalled();
+  });
+
+  it('resolves an owner from a later page of the team directory', async () => {
+    const listing = fixtureEntity('listing');
+    listing.relations = [
+      { type: 'ownedBy', targetRef: 'group:pyxis/team-201' },
+    ];
+    const teams = Array.from({ length: 201 }, (_, index) =>
+      fixtureEntity('team', index + 1),
+    );
+    const { queryEntities } = await renderTable('listing', [listing, ...teams]);
+
+    expect(
+      await screen.findByRole('link', { name: 'team 201' }),
+    ).toHaveAttribute('href', '/catalog/pyxis/group/team-201');
+    expect(queryEntities).toHaveBeenCalledWith(
+      expect.objectContaining({ cursor: expect.any(String), limit: 200 }),
+    );
   });
 
   it('sorts by name and paginates the selected kind', async () => {
     const user = userEvent.setup();
-    const listings = Array.from({ length: 40 }, (_, index) =>
-      fixtureEntity('listing', index + 1),
+    const listings = Array.from({ length: 40 }, (_, index) => {
+      const listing = fixtureEntity('listing', index + 1);
+      listing.metadata.title = `Listing ${String(index + 1).padStart(2, '0')}`;
+      return listing;
+    });
+    const catalogApi = new InMemoryCatalogClient({ entities: listings });
+    const queryCatalog = catalogApi.queryEntities.bind(catalogApi);
+    const { queryEntities, streamEntities } = await renderTable(
+      'listing',
+      [],
+      catalogApi,
     );
-    await renderTable('listing', listings);
+    const filter = expect.objectContaining({
+      'metadata.namespace': 'pyxis',
+      [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: 'listing',
+    });
+    expect(
+      await screen.findByRole('link', { name: 'Listing 01' }),
+    ).toBeVisible();
+    expect(screen.getAllByRole('row')).toHaveLength(21);
+    expect(queryEntities).toHaveBeenCalledWith(
+      expect.objectContaining({ filter, limit: 20, offset: 0 }),
+    );
 
-    const initialRows = screen.getAllByRole('row');
-    expect(initialRows[1]).toHaveTextContent('Listing 1');
-    expect(initialRows).toHaveLength(21);
-
+    let releaseSortedPage!: () => void;
+    const sortedPagePending = new Promise<void>(resolve => {
+      releaseSortedPage = resolve;
+    });
+    queryEntities.mockImplementationOnce(async request => {
+      await sortedPagePending;
+      return queryCatalog(request);
+    });
     await user.click(screen.getByRole('columnheader', { name: /Name/ }));
-    await waitFor(() => {
-      expect(screen.getAllByRole('row')[1].textContent).not.toBe(
-        initialRows[1].textContent,
-      );
-    });
-
-    const sortedRows = screen
-      .getAllByRole('row')
-      .slice(1)
-      .map(row => row.textContent);
+    await waitFor(() =>
+      expect(queryEntities).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          orderFields: { field: 'metadata.title', order: 'desc' },
+        }),
+      ),
+    );
+    await act(async () => releaseSortedPage());
+    expect(
+      await screen.findByRole('link', { name: 'Listing 40' }),
+    ).toBeVisible();
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 40');
     await user.click(screen.getByRole('button', { name: 'Next table page' }));
-    await waitFor(() => {
-      expect(
-        screen
-          .getAllByRole('row')
-          .slice(1)
-          .map(row => row.textContent),
-      ).not.toEqual(sortedRows);
-    });
+    expect(
+      await screen.findByRole('link', { name: 'Listing 20' }),
+    ).toBeVisible();
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 20');
+    expect(queryEntities).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filter,
+        limit: 20,
+        offset: 20,
+        orderFields: { field: 'metadata.title', order: 'desc' },
+      }),
+    );
+    expect(streamEntities).toHaveBeenCalledTimes(1);
   });
 });

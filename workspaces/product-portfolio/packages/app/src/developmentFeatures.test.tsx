@@ -19,7 +19,12 @@ import { renderTestApp } from '@backstage/frontend-test-utils';
 import { MockConfigApi } from '@backstage/test-utils';
 import { discoveryApiRef, fetchApiRef } from '@backstage/core-plugin-api';
 import { createApp } from '@backstage/frontend-defaults';
-import { render as renderRoot, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render as renderRoot,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import catalog from '@backstage/plugin-catalog/alpha';
 import portfolio from '@red-hat-developer-hub/backstage-plugin-product-portfolio/alpha';
 import { loadDevelopmentFeatures } from './developmentFeatures';
@@ -45,22 +50,27 @@ describe('development catalog modes', () => {
     'queries the backend catalog when demo is %s',
     async demo => {
       const fetch = jest.fn(
-        async () =>
+        async (_url: string) =>
           ({
             ok: true,
             status: 200,
-            json: async () => [],
+            json: async () => ({ items: [], totalItems: 0, pageInfo: {} }),
           } as unknown as Response),
       );
       const features = await loadDevelopmentFeatures(
         new MockConfigApi({ productPortfolio: { demo } }),
       );
       render(features, fetch);
-      await screen.findByText('No matching portfolio entities.');
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(`${backendUrl}/entities?`),
-        expect.anything(),
+      await screen.findByText(
+        'No matching entries. Adjust the search or choose another kind.',
       );
+      const request = new URL(fetch.mock.calls[0][0]);
+      expect(request.pathname).toBe('/api/catalog/entities/by-query');
+      expect(request.searchParams.get('filter')).toContain(
+        'metadata.annotations.pyxis.redhat.com/source-kind=listing',
+      );
+      expect(request.searchParams.get('limit')).toBe('20');
+      expect(request.searchParams.get('offset')).toBe('0');
       expect(screen.queryByLabelText('Demo mode')).not.toBeInTheDocument();
       expect(screen.queryByText('Listing 1')).not.toBeInTheDocument();
     },
@@ -100,7 +110,11 @@ describe('development catalog modes', () => {
         },
       });
       renderRoot(app.createRoot());
-      await screen.findByRole('heading', { name: 'Product Portfolio (32)' });
+      await screen.findByRole('link', { name: 'Listing 1' });
+      fireEvent.click(screen.getByRole('columnheader', { name: 'Name' }));
+      await waitFor(() =>
+        expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 2'),
+      );
       expect(screen.getByLabelText('Demo mode')).toHaveTextContent(
         'synthetic catalog data',
       );

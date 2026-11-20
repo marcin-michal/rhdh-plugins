@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
 import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { screen } from '@testing-library/react';
@@ -24,13 +25,13 @@ import { ProductPortfolioPage } from './ProductPortfolioPage';
 describe('ProductPortfolioPage', () => {
   it('shows one table for the selected kind and has no all-entries option', async () => {
     const user = userEvent.setup();
-    const entities = portfolioFixtures(13).filter(
-      entity => entity.metadata.namespace === 'pyxis',
-    );
-    const getEntities = jest.fn(async () => ({ items: entities }));
+    const catalogApi = new InMemoryCatalogClient({
+      entities: portfolioFixtures(13),
+    });
+    const streamEntities = jest.spyOn(catalogApi, 'streamEntities');
 
     await renderInTestApp(
-      <TestApiProvider apis={[[catalogApiRef, { getEntities }]]}>
+      <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         <ProductPortfolioPage />
       </TestApiProvider>,
       {
@@ -76,6 +77,6 @@ describe('ProductPortfolioPage', () => {
     expect(
       await screen.findByRole('row', { name: /Team 1/ }),
     ).toHaveTextContent('2');
-    expect(getEntities).toHaveBeenCalled();
+    expect(streamEntities).toHaveBeenCalledTimes(1);
   });
 });
