@@ -14,30 +14,41 @@
  * limitations under the License.
  */
 
+import { stringifyEntityRef } from '@backstage/catalog-model';
 import {
   CATALOG_FILTER_EXISTS,
   type CatalogApi,
 } from '@backstage/plugin-catalog-react';
 import {
   PYXIS_ANNOTATIONS,
+  PYXIS_ENTITY_TYPES,
   PYXIS_NAMESPACE,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { readEntity, sourceKey } from '../model/entities';
+import { sourceKey } from '../model/entities';
 import type { PortfolioTeam } from './columns';
 import type { PortfolioCategory } from './filterState';
 
-const TEAM_DIRECTORY_FIELDS = [
+const ENTITY_LABEL_FIELDS = [
   'kind',
   'metadata.name',
   'metadata.namespace',
   'metadata.title',
-  'metadata.annotations',
+];
+
+const TEAM_DIRECTORY_FIELDS = [
+  ...ENTITY_LABEL_FIELDS,
+  `metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`,
+  `metadata.annotations.${PYXIS_ANNOTATIONS.sourceId}`,
+  `metadata.annotations.${PYXIS_ANNOTATIONS.projectionVersion}`,
   'spec.type',
-  'spec.pyxis',
+  'spec.pyxis.record.name',
 ];
 
 export const PORTFOLIO_ENTITY_FIELDS = [
-  ...TEAM_DIRECTORY_FIELDS,
+  ...ENTITY_LABEL_FIELDS,
+  'metadata.annotations',
+  'spec.type',
+  'spec.pyxis',
   'metadata.description',
   'metadata.uid',
   'relations',
@@ -72,24 +83,31 @@ export async function fetchPortfolioTeamDirectory(
 
   for await (const entities of pages) {
     for (const entity of entities) {
-      const model = readEntity(entity).value;
-      if (model?.category !== 'team') {
+      const annotations = entity.metadata.annotations;
+      const sourceInstance = annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
+      const id = annotations?.[PYXIS_ANNOTATIONS.sourceId];
+      const isTeam =
+        entity.kind.toLowerCase() === 'group' &&
+        entity.spec?.type === PYXIS_ENTITY_TYPES.team &&
+        annotations?.[PYXIS_ANNOTATIONS.projectionVersion] === '1';
+      if (!isTeam || !sourceInstance || !id) {
         continue;
       }
 
-      const record = model.projection.record;
-      const name =
-        record && 'name' in record && typeof record.name === 'string'
-          ? record.name.trim()
-          : '';
+      const projection = entity.spec?.pyxis as
+        | { record?: { name?: unknown } }
+        | undefined;
+      const recordName = projection?.record?.name;
+      const name = typeof recordName === 'string' ? recordName.trim() : '';
       const label = name || entity.metadata.title?.trim();
       if (!label) {
         continue;
       }
 
-      const team: PortfolioTeam = { entity, ref: model.ref, label };
-      teams.set(model.ref, team);
-      teams.set(sourceKey(model.projection.source), team);
+      const ref = stringifyEntityRef(entity);
+      const team: PortfolioTeam = { entity, ref, label };
+      teams.set(ref, team);
+      teams.set(sourceKey({ sourceInstance, kind: 'team', id }), team);
     }
   }
 

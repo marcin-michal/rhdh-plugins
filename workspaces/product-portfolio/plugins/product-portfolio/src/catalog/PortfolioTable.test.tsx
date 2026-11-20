@@ -17,11 +17,18 @@
 import type { Entity } from '@backstage/catalog-model';
 import type { QueryEntitiesResponse } from '@backstage/catalog-client';
 import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
-import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
+import {
+  CATALOG_FILTER_EXISTS,
+  catalogApiRef,
+  entityRouteRef,
+} from '@backstage/plugin-catalog-react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PYXIS_ANNOTATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import {
+  PYXIS_ANNOTATIONS,
+  type PyxisProjection,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import {
   fixtureEntity,
   observedAt,
@@ -141,21 +148,49 @@ describe('PortfolioTable', () => {
     expect(streamEntities).not.toHaveBeenCalled();
   });
 
-  it('resolves an owner from a later page of the team directory', async () => {
+  it('resolves an owner by source ID from a later page of the projected team directory', async () => {
     const listing = fixtureEntity('listing');
-    listing.relations = [
-      { type: 'ownedBy', targetRef: 'group:pyxis/team-201' },
-    ];
     const teams = Array.from({ length: 201 }, (_, index) =>
       fixtureEntity('team', index + 1),
     );
-    const { queryEntities } = await renderTable('listing', [listing, ...teams]);
+    const projection = listing.spec!.pyxis as unknown as PyxisProjection;
+    Object.assign(projection.record!, {
+      team_id: teams[200].metadata.annotations![PYXIS_ANNOTATIONS.sourceId],
+    });
+    const { queryEntities, streamEntities } = await renderTable('listing', [
+      listing,
+      ...teams,
+    ]);
 
     expect(
       await screen.findByRole('link', { name: 'team 201' }),
     ).toHaveAttribute('href', '/catalog/pyxis/group/team-201');
+    expect(streamEntities).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: {
+          'metadata.namespace': 'pyxis',
+          [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`]:
+            CATALOG_FILTER_EXISTS,
+          [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: 'team',
+        },
+      }),
+    );
     expect(queryEntities).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor: expect.any(String), limit: 200 }),
+      expect.objectContaining({
+        cursor: expect.any(String),
+        limit: 200,
+        fields: [
+          'kind',
+          'metadata.name',
+          'metadata.namespace',
+          'metadata.title',
+          `metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`,
+          `metadata.annotations.${PYXIS_ANNOTATIONS.sourceId}`,
+          `metadata.annotations.${PYXIS_ANNOTATIONS.projectionVersion}`,
+          'spec.type',
+          'spec.pyxis.record.name',
+        ],
+      }),
     );
   });
 
