@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
+import { RELATION_OWNED_BY } from '@backstage/catalog-model';
 import { useEntity } from '@backstage/plugin-catalog-react';
-import { Flex } from '@backstage/ui';
-import { useOwnedPortfolioEntities } from '../../hooks/useOwnedPortfolioEntities';
 import { readEntity } from '../../model/entities';
 import { QualityNotice } from '../shared/QualityNotice';
 import { RelatedEntitiesTable } from '../shared/RelatedEntitiesTable';
@@ -34,28 +33,12 @@ export function TeamProductListings() {
     );
   }
 
-  return <TeamProductListingsContent team={entity} />;
-}
-
-function TeamProductListingsContent({
-  team,
-}: {
-  team: ReturnType<typeof useEntity>['entity'];
-}) {
-  const owned = useOwnedPortfolioEntities(team);
-
   return (
-    <Flex direction="column" gap="4">
-      {owned.error && <QualityNotice error message={owned.error} />}
-      {owned.partial && (
-        <QualityNotice message="Some product listings owned by this team are not available in the catalog." />
-      )}
-      <RelatedEntitiesTable
-        category="listing"
-        entities={owned.listings}
-        loading={owned.loading}
-        emptyMessage="No product listings are owned by this team."
-      />
-    </Flex>
+    <RelatedEntitiesTable
+      source={entity}
+      inverseRelation={RELATION_OWNED_BY}
+      category="listing"
+      emptyMessage="No product listings owned by this team are available in the catalog."
+    />
   );
 }

@@ -18,37 +18,7 @@ import { useMemo } from 'react';
 import type { Entity } from '@backstage/catalog-model';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { readEntity, sortEntities } from '../model/entities';
-import {
-  relatedEntityRefs,
-  useEntitiesByRefs,
-  useRelatedEntities,
-} from './useRelatedEntities';
-
-export function useOwnedPortfolioEntities(team: Entity) {
-  const state = useRelatedEntities(team, 'ownerOf');
-  const managed = useMemo(
-    () =>
-      state.entities.filter(e =>
-        ['listing', 'repository'].includes(readEntity(e).value?.category ?? ''),
-      ),
-    [state.entities],
-  );
-  const listings = useMemo(
-    () => managed.filter(e => readEntity(e).value?.category === 'listing'),
-    [managed],
-  );
-  const repositories = useMemo(
-    () => managed.filter(e => readEntity(e).value?.category === 'repository'),
-    [managed],
-  );
-
-  return {
-    ...state,
-    entities: managed,
-    listings,
-    repositories,
-  };
-}
+import { relatedEntityRefs, useEntitiesByRefs } from './useRelatedEntities';
 
 export function useOwnedPortfolioRepositories(team: Entity, fields?: string[]) {
   const directRefs = relatedEntityRefs([team], 'ownerOf');

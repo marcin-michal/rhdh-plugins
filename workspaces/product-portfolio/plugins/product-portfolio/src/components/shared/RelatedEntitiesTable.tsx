@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-import { useMemo } from 'react';
+import { useState } from 'react';
 import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
-import { useRouteRef } from '@backstage/core-plugin-api';
+import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import {
+  catalogApiRef,
   entityRouteParams,
   entityRouteRef,
 } from '@backstage/plugin-catalog-react';
 import {
   Box,
+  Button,
   Card,
   CardBody,
   Cell,
@@ -32,17 +34,28 @@ import {
   Text,
   TextField,
   type ColumnConfig,
-  type SortDescriptor,
   type TableItem,
   useTable,
 } from '@backstage/ui';
-import { readEntity, sortEntities } from '../../model/entities';
+import {
+  PYXIS_ANNOTATIONS,
+  PYXIS_ENTITY_TYPES,
+} from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import {
+  portfolioEntityFilter,
+  PORTFOLIO_ENTITY_FIELDS,
+} from '../../catalog/portfolioCatalogApi';
+import { relatedEntityRefs } from '../../hooks/useRelatedEntities';
+import { readEntity } from '../../model/entities';
+import { QualityNotice } from './QualityNotice';
 import { Timestamp } from './Timestamp';
 
 type RelatedEntityCategory = 'listing' | 'repository';
+const relatedEntityFields = PORTFOLIO_ENTITY_FIELDS.filter(
+  field => field !== 'relations',
+);
 
 interface RelatedEntityTableRow extends TableItem {
-  entity: Entity;
   name: string;
   href: string;
   description?: string;
@@ -62,46 +75,15 @@ const tableCopy: Record<
     title: 'Product listings',
     searchPlaceholder: 'Search product listings',
     noMatchesMessage: 'No product listings match your search.',
-    emptyMessage: 'No product listings are linked to this repository.',
+    emptyMessage: 'No linked product listings are available in the catalog.',
   },
   repository: {
     title: 'Repositories',
     searchPlaceholder: 'Search repositories',
     noMatchesMessage: 'No repositories match your search.',
-    emptyMessage: 'No repositories are linked to this product listing.',
+    emptyMessage: 'No linked repositories are available in the catalog.',
   },
 };
-
-function sortRows(
-  rows: RelatedEntityTableRow[],
-  sort: SortDescriptor,
-): RelatedEntityTableRow[] {
-  if (sort.column !== 'name') {
-    return rows;
-  }
-
-  const direction = sort.direction === 'descending' ? -1 : 1;
-
-  return [...rows].sort(
-    (first, second) => direction * sortEntities(first.entity, second.entity),
-  );
-}
-
-function searchRows(
-  rows: RelatedEntityTableRow[],
-  search: string,
-): RelatedEntityTableRow[] {
-  const query = search.trim().toLocaleLowerCase();
-  if (!query) {
-    return rows;
-  }
-
-  return rows.filter(
-    row =>
-      row.name.toLocaleLowerCase().includes(query) ||
-      row.entity.metadata.name.toLocaleLowerCase().includes(query),
-  );
-}
 
 const relatedEntityColumns: ColumnConfig<RelatedEntityTableRow>[] = [
   {
@@ -130,16 +112,46 @@ const relatedEntityColumns: ColumnConfig<RelatedEntityTableRow>[] = [
   },
 ];
 
-export function RelatedEntitiesTable({
-  entities,
-  loading,
-  category,
-  emptyMessage,
-}: {
-  entities: Entity[];
-  loading: boolean;
+interface RelatedEntitiesTableProps {
+  source: Entity;
+  inverseRelation: string;
   category: RelatedEntityCategory;
   emptyMessage?: string;
+  availability?: { relation: string; message: string };
+}
+
+export function RelatedEntitiesTable({
+  source,
+  availability,
+  ...props
+}: RelatedEntitiesTableProps) {
+  const sourceRef = stringifyEntityRef(source);
+  const expectedLinks = availability
+    ? new Set(relatedEntityRefs([source], availability.relation)).size
+    : 0;
+
+  return (
+    <RelatedEntitiesResults
+      key={`${sourceRef}:${props.category}:${props.inverseRelation}:${expectedLinks}`}
+      sourceRef={sourceRef}
+      expectedLinks={expectedLinks}
+      unavailableMessage={availability?.message}
+      {...props}
+    />
+  );
+}
+
+function RelatedEntitiesResults({
+  sourceRef,
+  expectedLinks,
+  inverseRelation,
+  category,
+  emptyMessage,
+  unavailableMessage,
+}: Omit<RelatedEntitiesTableProps, 'source' | 'availability'> & {
+  sourceRef: string;
+  expectedLinks: number;
+  unavailableMessage?: string;
 }) {
   const copy = tableCopy[category];
   const titleId =
@@ -147,9 +159,39 @@ export function RelatedEntitiesTable({
       ? 'repository-product-listings-title'
       : 'listing-repositories-title';
   const entityRoute = useRouteRef(entityRouteRef);
-  const rows = useMemo(
-    () =>
-      entities.flatMap(entity => {
+  const catalogApi = useApi(catalogApiRef);
+  const [partial, setPartial] = useState(false);
+
+  const { tableProps, search, reload } = useTable<RelatedEntityTableRow>({
+    mode: 'offset',
+    initialSort: { column: 'name', direction: 'ascending' },
+    getData: async ({ offset, pageSize, sort, search: searchTerm, signal }) => {
+      const term = searchTerm.trim();
+      const page = await catalogApi.queryEntities({
+        filter: {
+          ...portfolioEntityFilter(category),
+          kind: 'Resource',
+          'spec.type': PYXIS_ENTITY_TYPES[category],
+          [`metadata.annotations.${PYXIS_ANNOTATIONS.projectionVersion}`]: '1',
+          [`relations.${inverseRelation}`]: sourceRef,
+        },
+        offset,
+        limit: pageSize,
+        fields: relatedEntityFields,
+        orderFields: {
+          field: 'metadata.title',
+          order: sort?.direction === 'descending' ? 'desc' : 'asc',
+        },
+        fullTextFilter: term
+          ? { term, fields: ['metadata.title', 'metadata.name'] }
+          : undefined,
+      });
+
+      if (expectedLinks && offset === 0 && !term && !signal.aborted) {
+        setPartial(page.totalItems < expectedLinks);
+      }
+
+      const data = page.items.flatMap(entity => {
         const model = readEntity(entity).value;
         if (!model || model.category !== category) {
           return [];
@@ -158,25 +200,17 @@ export function RelatedEntitiesTable({
         return [
           {
             id: entity.metadata.uid ?? stringifyEntityRef(entity),
-            entity,
             name: model.title,
             href: entityRoute(entityRouteParams(entity)),
             description: model.description,
             updatedAt: model.updatedAt,
           },
         ];
-      }),
-    [category, entities, entityRoute],
-  );
+      });
 
-  const { tableProps, search } = useTable({
-    mode: 'complete',
-    data: rows,
-    initialSort: { column: 'name', direction: 'ascending' },
-    sortFn: sortRows,
-    searchFn: searchRows,
+      return { data, totalCount: page.totalItems };
+    },
     paginationOptions: {
-      type: 'page',
       pageSize: 20,
       pageSizeOptions: [20, 50, 100],
     },
@@ -195,42 +229,51 @@ export function RelatedEntitiesTable({
   );
 
   return (
-    <Card aria-labelledby={titleId}>
-      <CardBody>
-        <Flex direction="column" gap="4">
-          <Flex
-            direction={{ initial: 'column', sm: 'row' }}
-            align={{ initial: 'stretch', sm: 'end' }}
-            justify="between"
-            gap="3"
-          >
-            <Text as="h2" id={titleId} variant="title-small">
-              {copy.title}
-            </Text>
-            <Box width="100%" style={{ maxWidth: '24rem' }}>
-              <TextField
-                label="Search by name"
-                placeholder={copy.searchPlaceholder}
-                value={search.value}
-                onChange={search.onChange}
-                size="small"
+    <Flex direction="column" gap="4">
+      {partial && unavailableMessage && (
+        <QualityNotice message={unavailableMessage} />
+      )}
+      <Card aria-labelledby={titleId}>
+        <CardBody>
+          <Flex direction="column" gap="4">
+            <Flex
+              direction={{ initial: 'column', sm: 'row' }}
+              align={{ initial: 'stretch', sm: 'end' }}
+              justify="between"
+              gap="3"
+            >
+              <Text as="h2" id={titleId} variant="title-small">
+                {copy.title}
+              </Text>
+              <Box width="100%" style={{ maxWidth: '24rem' }}>
+                <TextField
+                  label="Search by name"
+                  placeholder={copy.searchPlaceholder}
+                  value={search.value}
+                  onChange={search.onChange}
+                  size="small"
+                />
+              </Box>
+            </Flex>
+            {tableProps.error ? (
+              <Flex direction="column" gap="2">
+                <QualityNotice
+                  error
+                  message="Related catalog data could not be loaded."
+                />
+                <Button onPress={reload}>Retry</Button>
+              </Flex>
+            ) : (
+              <Table
+                {...tableProps}
+                columnConfig={relatedEntityColumns}
+                rowConfig={{ getHref: row => row.href }}
+                emptyState={emptyState}
               />
-            </Box>
+            )}
           </Flex>
-          <Table
-            {...tableProps}
-            columnConfig={relatedEntityColumns}
-            rowConfig={{ getHref: row => row.href }}
-            data={
-              loading && tableProps.data?.length === 0
-                ? undefined
-                : tableProps.data
-            }
-            loading={loading}
-            emptyState={emptyState}
-          />
-        </Flex>
-      </CardBody>
-    </Card>
+        </CardBody>
+      </Card>
+    </Flex>
   );
 }

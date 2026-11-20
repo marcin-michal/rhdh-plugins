@@ -15,9 +15,7 @@
  */
 
 import { useEntity } from '@backstage/plugin-catalog-react';
-import { Flex } from '@backstage/ui';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { useRelatedEntities } from '../../hooks/useRelatedEntities';
 import { readEntity } from '../../model/entities';
 import { QualityNotice } from '../shared/QualityNotice';
 import { RelatedEntitiesTable } from '../shared/RelatedEntitiesTable';
@@ -25,7 +23,6 @@ import { RelatedEntitiesTable } from '../shared/RelatedEntitiesTable';
 export function RepositoryProductListings() {
   const { entity } = useEntity();
   const model = readEntity(entity);
-  const related = useRelatedEntities(entity, PYXIS_RELATIONS.repositoryOf);
 
   if (!model.value || model.value.category !== 'repository') {
     return (
@@ -36,21 +33,16 @@ export function RepositoryProductListings() {
     );
   }
 
-  const listings = related.entities.filter(
-    listing => readEntity(listing).value?.category === 'listing',
-  );
-
   return (
-    <Flex direction="column" gap="4">
-      {related.error && <QualityNotice error message={related.error} />}
-      {related.partial && (
-        <QualityNotice message="Some product listings linked to this repository are not available in the catalog." />
-      )}
-      <RelatedEntitiesTable
-        category="listing"
-        entities={listings}
-        loading={related.loading}
-      />
-    </Flex>
+    <RelatedEntitiesTable
+      source={entity}
+      inverseRelation={PYXIS_RELATIONS.hasRepository}
+      category="listing"
+      availability={{
+        relation: PYXIS_RELATIONS.repositoryOf,
+        message:
+          'Some product listings linked to this repository are not available in the catalog.',
+      }}
+    />
   );
 }

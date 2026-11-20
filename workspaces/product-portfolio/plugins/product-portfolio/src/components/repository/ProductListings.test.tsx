@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
+import type { Entity } from '@backstage/catalog-model';
 import {
   catalogApiRef,
   EntityProvider,
@@ -36,19 +37,11 @@ async function renderRepositoryProductListings(
   repository: Entity,
   entities: Entity[],
 ) {
-  const entitiesByRef = new Map(
-    entities.map(entity => [stringifyEntityRef(entity), entity]),
-  );
-  const getEntitiesByRefs = jest.fn(
-    async ({ entityRefs }: { entityRefs: string[] }) => ({
-      items: entityRefs
-        .map(ref => entitiesByRef.get(ref))
-        .filter((entity): entity is Entity => Boolean(entity)),
-    }),
-  );
+  const catalogApi = new InMemoryCatalogClient({ entities });
+  const queryEntities = jest.spyOn(catalogApi, 'queryEntities');
 
   await renderInTestApp(
-    <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+    <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
       <EntityProvider entity={repository}>
         <RepositoryProductListings />
       </EntityProvider>
@@ -61,7 +54,7 @@ async function renderRepositoryProductListings(
     },
   );
 
-  return getEntitiesByRefs;
+  return queryEntities;
 }
 
 describe('RepositoryProductListings', () => {
@@ -72,16 +65,22 @@ describe('RepositoryProductListings', () => {
       entity => entity.metadata.name === 'repository-1',
     )!;
 
-    const getEntitiesByRefs = await renderRepositoryProductListings(
+    const queryEntities = await renderRepositoryProductListings(
       repository,
       entities,
     );
 
     expect(await screen.findByText('Listing 1')).toBeInTheDocument();
     expect(screen.queryByText('Listing 2')).not.toBeInTheDocument();
-    expect(getEntitiesByRefs).toHaveBeenCalledWith({
-      entityRefs: ['resource:pyxis/listing-1'],
-    });
+    expect(queryEntities).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: expect.objectContaining({
+          'relations.pyxisHasRepository': 'resource:pyxis/repository-1',
+        }),
+        limit: 20,
+        offset: 0,
+      }),
+    );
 
     const search = screen.getByRole('textbox', { name: 'Search by name' });
     await user.type(search, 'listing-1');
@@ -108,16 +107,15 @@ describe('RepositoryProductListings', () => {
 
   it('shows an empty state when the repository has no listing relations', async () => {
     const repository = fixtureEntity('repository');
-    const getEntitiesByRefs = await renderRepositoryProductListings(
+    const queryEntities = await renderRepositoryProductListings(repository, [
       repository,
-      [repository],
-    );
+    ]);
 
     expect(
       await screen.findByText(
-        'No product listings are linked to this repository.',
+        'No linked product listings are available in the catalog.',
       ),
     ).toBeInTheDocument();
-    expect(getEntitiesByRefs).not.toHaveBeenCalled();
+    expect(queryEntities).toHaveBeenCalledTimes(1);
   });
 });
