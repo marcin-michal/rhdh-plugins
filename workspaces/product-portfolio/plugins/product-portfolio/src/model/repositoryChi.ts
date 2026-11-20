@@ -19,8 +19,17 @@ import {
   getRepositoryChiQuality,
   parseRepositoryChiProjection,
   type ChiImageObservation,
+  type RepositoryChiProjection,
+  type RepositoryChiSnapshot,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { readEntity, sourceKey } from './entities';
+
+export function hasVisibleGrades(
+  state: RepositoryChiProjection['state'],
+  coverage: RepositoryChiSnapshot['coverage']['grades'],
+): boolean {
+  return (state === 'ready' || state === 'partial') && coverage !== 'hidden';
+}
 
 export function readRepositoryChi(entity: Entity, now: number) {
   try {

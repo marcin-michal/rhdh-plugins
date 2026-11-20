@@ -225,14 +225,12 @@ function TagsCell({ row }: { row: GradeImageRow }) {
   );
 }
 
-export const GradeSectionTable = memo(function GradeSectionTable({
+function GradeImageTable({
   section,
-  expanded,
-  onToggle,
+  tableId,
 }: {
   section: GradeSection;
-  expanded: boolean;
-  onToggle: (sectionId: GradeSectionId, expanded: boolean) => void;
+  tableId: string;
 }) {
   const entityRoute = useRouteRef(entityRouteRef);
   const rows = useMemo(
@@ -314,6 +312,32 @@ export const GradeSectionTable = memo(function GradeSectionTable({
       pageSizeOptions: [5, 10, 20],
     },
   });
+
+  return (
+    <Box id={tableId}>
+      <Flex direction="column" gap="2">
+        <SearchField
+          aria-label={`Search grade ${section.label} images by repository name`}
+          placeholder="Search by repository name"
+          size="small"
+          value={search.value}
+          onChange={search.onChange}
+        />
+        <Table {...tableProps} columnConfig={columnConfig} />
+      </Flex>
+    </Box>
+  );
+}
+
+export const GradeSectionTable = memo(function GradeSectionTable({
+  section,
+  expanded,
+  onToggle,
+}: {
+  section: GradeSection;
+  expanded: boolean;
+  onToggle: (sectionId: GradeSectionId, expanded: boolean) => void;
+}) {
   const tableId = `grade-images-${section.id}`;
 
   return (
@@ -358,20 +382,7 @@ export const GradeSectionTable = memo(function GradeSectionTable({
           </Text>
         </Flex>
       </Button>
-      {expanded && (
-        <Box id={tableId}>
-          <Flex direction="column" gap="2">
-            <SearchField
-              aria-label={`Search grade ${section.label} images by repository name`}
-              placeholder="Search by repository name"
-              size="small"
-              value={search.value}
-              onChange={search.onChange}
-            />
-            <Table {...tableProps} columnConfig={columnConfig} />
-          </Flex>
-        </Box>
-      )}
+      {expanded && <GradeImageTable section={section} tableId={tableId} />}
     </Box>
   );
 });

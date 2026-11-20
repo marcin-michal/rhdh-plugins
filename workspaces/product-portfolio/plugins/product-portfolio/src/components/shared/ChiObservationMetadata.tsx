@@ -14,67 +14,22 @@
  * limitations under the License.
  */
 
-import { Flex, Grid, Text, type TextColorStatus } from '@backstage/ui';
-import type { RelatedState } from '../../hooks/useRelatedEntities';
-import type { PortfolioChiSummary } from '../../model/portfolioChi';
+import { Flex, Text } from '@backstage/ui';
 import { Timestamp } from './Timestamp';
 
 export function ChiObservationMetadata({
-  state,
-  repositoryCount,
-  summary,
-  showObservationStatus = true,
+  latestObservationAt,
 }: {
-  state: RelatedState;
-  repositoryCount: number;
-  summary: Pick<
-    PortfolioChiSummary,
-    'aggregate' | 'snapshotsUsed' | 'latestObservationAt'
-  >;
-  showObservationStatus?: boolean;
+  latestObservationAt: string | null;
 }) {
-  let observationStatus = 'Incomplete';
-  let observationColor: TextColorStatus = 'warning';
-  if (state.loading) {
-    observationStatus = 'Loading';
-    observationColor = 'info';
-  } else if (state.error) {
-    observationStatus = 'Unavailable';
-    observationColor = 'danger';
-  } else if (repositoryCount === 0) {
-    observationStatus = 'No observations';
-  } else if (summary.aggregate.complete && !state.partial) {
-    observationStatus = 'Complete';
-    observationColor = 'success';
-  }
-
   return (
-    <Grid.Root
-      columns={{ initial: '1', sm: showObservationStatus ? '2' : '1' }}
-      gap="3"
-    >
-      {showObservationStatus && (
-        <Grid.Item>
-          <Flex direction="column" gap="1">
-            <Text as="p" variant="body-small" color="secondary">
-              Observation status
-            </Text>
-            <Text as="p" variant="body-medium" color={observationColor}>
-              {observationStatus}
-            </Text>
-          </Flex>
-        </Grid.Item>
-      )}
-      <Grid.Item>
-        <Flex direction="column" gap="1">
-          <Text as="p" variant="body-small" color="secondary">
-            Latest grade observation
-          </Text>
-          <Text as="p" variant="body-medium">
-            <Timestamp value={summary.latestObservationAt} />
-          </Text>
-        </Flex>
-      </Grid.Item>
-    </Grid.Root>
+    <Flex direction="column" gap="1">
+      <Text as="p" variant="body-small" color="secondary">
+        Latest grade observation
+      </Text>
+      <Text as="p" variant="body-medium">
+        <Timestamp value={latestObservationAt} />
+      </Text>
+    </Flex>
   );
 }

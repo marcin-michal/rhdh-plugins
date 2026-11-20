@@ -28,7 +28,6 @@ import { useOwnedPortfolioRepositories } from '../../hooks/useOwnedPortfolioEnti
 import { readEntity } from '../../model/entities';
 import {
   collectPortfolioChiData,
-  summarizePortfolioChiData,
   type ImageOccurrence,
   type PortfolioChiBucket,
 } from '../../model/portfolioChi';
@@ -57,20 +56,23 @@ const gradeSectionLabels: Array<{
 function sectionsFromBuckets(buckets: PortfolioChiBucket[]): GradeSection[] {
   const imagesBySection = new Map<GradeSectionId, ImageOccurrence[]>();
 
-  for (const bucket of buckets) {
-    if (bucket.grade === 'Unknown') {
+  for (const { grade, images } of buckets) {
+    if (grade === 'Unknown') {
+      continue;
+    }
+    if (grade !== 'A') {
+      imagesBySection.set(grade.toLowerCase() as GradeSectionId, images);
       continue;
     }
 
-    for (const occurrence of bucket.images) {
-      const sectionId: GradeSectionId =
-        bucket.grade === 'A' && occurrence.image.futureDrops.length > 0
-          ? 'a-with-drop'
-          : (bucket.grade.toLocaleLowerCase('en-US') as GradeSectionId);
-      const images = imagesBySection.get(sectionId) ?? [];
-      images.push(occurrence);
-      imagesBySection.set(sectionId, images);
+    const stable: ImageOccurrence[] = [];
+    const scheduled: ImageOccurrence[] = [];
+    for (const occurrence of images) {
+      const section = occurrence.image.futureDrops.length ? scheduled : stable;
+      section.push(occurrence);
     }
+    imagesBySection.set('a', stable);
+    imagesBySection.set('a-with-drop', scheduled);
   }
 
   return gradeSectionLabels.flatMap(({ id, label }) => {
@@ -179,10 +181,6 @@ function GradesContent({
     () => collectPortfolioChiData(repositories),
     [repositories],
   );
-  const summary = useMemo(
-    () => summarizePortfolioChiData(portfolioData, Date.now()),
-    [portfolioData],
-  );
   const sections = useMemo(
     () => sectionsFromBuckets(portfolioData.buckets),
     [portfolioData.buckets],
@@ -210,10 +208,7 @@ function GradesContent({
     <DetailCard title="Container Health Index">
       <Flex direction="column" gap="4">
         <ChiObservationMetadata
-          state={related}
-          repositoryCount={repositories.length}
-          summary={summary}
-          showObservationStatus={false}
+          latestObservationAt={portfolioData.latestObservationAt}
         />
 
         <Flex direction="column" gap="1">

@@ -14,15 +14,52 @@
  * limitations under the License.
  */
 
-import { renderInTestApp } from '@backstage/test-utils';
-import { screen } from '@testing-library/react';
+import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import {
+  catalogApiRef,
+  EntityProvider,
+  entityRouteRef,
+} from '@backstage/plugin-catalog-react';
+import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
+import { Route, Routes } from 'react-router-dom';
 import type { RelatedState } from '../../hooks/useRelatedEntities';
 import {
   fixtureEntity,
   fixtureHealth,
   observedAt,
+  teamPortfolioFixtures,
 } from '../../testUtils/fixtures';
+import { ListingOverview } from '../product-listing/Overview';
+import { TeamOverview } from '../team/Overview';
+import { Grades } from './Grades';
 import { GradesSummary } from './GradesSummary';
+
+function selectCatalogFields(entity: Entity, fields: string[]): Entity {
+  const selected: Record<string, unknown> = {};
+
+  for (const field of fields) {
+    const path = field.split('.');
+    const value = path.reduce<unknown>(
+      (source, key) => (source as Record<string, unknown> | null)?.[key],
+      entity,
+    );
+    if (value === undefined) {
+      continue;
+    }
+
+    let target = selected;
+    for (const key of path.slice(0, -1)) {
+      target[key] ??= {};
+      target = target[key] as Record<string, unknown>;
+    }
+    target[path.at(-1)!] = value;
+  }
+
+  return selected as unknown as Entity;
+}
 
 function relatedState(overrides: Partial<RelatedState> = {}): RelatedState {
   return {
@@ -39,6 +76,143 @@ async function renderSummary(state: RelatedState) {
 }
 
 describe('GradesSummary', () => {
+  it.each([
+    ['listing-1', '/catalog/pyxis/resource/listing-1', ListingOverview, 0],
+    ['team-1', '/catalog/pyxis/group/team-1', TeamOverview, 1],
+  ] as const)(
+    'opens the matching section from the projected grade counts for %s',
+    async (name, href, Overview, directOnlyGradeCount) => {
+      const user = userEvent.setup();
+      const entities = teamPortfolioFixtures();
+      const entity = entities.find(
+        candidate => candidate.metadata.name === name,
+      )!;
+      const listing = entities.find(
+        candidate => candidate.metadata.name === 'listing-1',
+      )!;
+      const repository = entities.find(
+        candidate => candidate.metadata.name === 'repository-1',
+      )!;
+      const health = fixtureHealth(repository, 'partial', 'A');
+      health.snapshot!.images[0].futureDrops = [
+        { from: 'A', to: 'B', at: '2099-01-01T00:00:00.000Z' },
+      ];
+      health.snapshot!.counts.aWithScheduledDrop = 1;
+      repository.spec!.pyxisChi = JSON.parse(JSON.stringify(health));
+
+      const hidden = fixtureEntity('repository', 7);
+      // A hidden projection can still carry a previous snapshot.
+      const hiddenHealth = fixtureHealth(hidden, 'ready', 'D');
+      hiddenHealth.state = 'hidden';
+      const latest = '2026-11-01T00:00Z';
+      hiddenHealth.snapshot!.observedAt = latest;
+      hidden.spec!.pyxisChi = JSON.parse(JSON.stringify(hiddenHealth));
+      listing.relations!.push(
+        {
+          type: PYXIS_RELATIONS.hasRepository,
+          targetRef: stringifyEntityRef(hidden),
+        },
+        {
+          type: PYXIS_RELATIONS.hasRepository,
+          targetRef: 'resource:pyxis/inaccessible',
+        },
+      );
+
+      const entitiesByRef = new Map(
+        [...entities, hidden].map(candidate => [
+          stringifyEntityRef(candidate),
+          candidate,
+        ]),
+      );
+      const getEntitiesByRefs = jest.fn(
+        async ({
+          entityRefs,
+          fields,
+        }: {
+          entityRefs: string[];
+          fields?: string[];
+        }) => ({
+          items: entityRefs.map(ref => {
+            const candidate = entitiesByRef.get(ref);
+            return candidate && fields
+              ? selectCatalogFields(candidate, fields)
+              : candidate;
+          }),
+        }),
+      );
+
+      await renderInTestApp(
+        <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+          <EntityProvider entity={entity}>
+            <Routes>
+              <Route path={href} element={<Overview />} />
+              <Route path={`${href}/grades`} element={<Grades />} />
+            </Routes>
+          </EntityProvider>
+        </TestApiProvider>,
+        {
+          routeEntries: [href],
+          mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef },
+        },
+      );
+
+      const withDrop = await screen.findByRole('rowheader', {
+        name: 'A with drop',
+      });
+      const stableA = screen.getByRole('rowheader', { name: 'A' });
+      const directOnlyGrade = screen.queryAllByRole('rowheader', { name: 'B' });
+      expect(directOnlyGrade).toHaveLength(directOnlyGradeCount);
+      for (const grade of [withDrop, stableA, ...directOnlyGrade]) {
+        expect(
+          within(grade.closest('tr')!).getByRole('gridcell', { name: '1' }),
+        ).toBeInTheDocument();
+      }
+      expect(screen.queryByRole('rowheader', { name: 'D' })).toBeNull();
+      expect(
+        document.querySelector(`time[datetime="${latest}"]`),
+      ).toBeInTheDocument();
+
+      const overviewRepositoryRequests = getEntitiesByRefs.mock.calls
+        .map(([request]) => request)
+        .filter(request =>
+          request.entityRefs.some(ref =>
+            ref.startsWith('resource:pyxis/repository-'),
+          ),
+        );
+      expect(overviewRepositoryRequests.length).toBeGreaterThan(0);
+      for (const { fields } of overviewRepositoryRequests) {
+        expect(fields).toContain('spec.pyxisChi.snapshot.counts.byGrade');
+        expect(fields).not.toContain('spec.pyxisChi');
+        expect(fields).not.toContain('spec.pyxisChi.snapshot');
+        expect(fields).not.toContain('spec.pyxisChi.snapshot.images');
+        expect(fields).not.toContain('spec.pyxisChi.snapshot.streams');
+      }
+      getEntitiesByRefs.mockClear();
+
+      await user.click(withDrop);
+      const section = await screen.findByRole('button', {
+        name: 'Grade A with scheduled drop 1 image',
+      });
+      expect(section).toHaveAttribute('aria-expanded', 'true');
+      expect(
+        screen.getByRole('button', { name: 'Grade A 1 image' }),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Grade D/ })).toBeNull();
+      expect(
+        screen.queryAllByRole('button', { name: 'Grade B 1 image' }),
+      ).toHaveLength(directOnlyGradeCount);
+      expect(
+        screen.getByRole('link', { name: 'portfolio/repository-1' }),
+      ).toBeInTheDocument();
+      expect(
+        document.querySelector(`time[datetime="${latest}"]`),
+      ).toBeInTheDocument();
+      expect(
+        getEntitiesByRefs.mock.calls.every(([request]) => !request.fields),
+      ).toBe(true);
+    },
+  );
+
   it('shows the last observation time without status or warning notices', async () => {
     const repository = fixtureEntity('repository');
     repository.spec!.pyxisChi = JSON.parse(

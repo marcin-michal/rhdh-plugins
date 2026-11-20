@@ -24,6 +24,7 @@ import { Box, Flex } from '@backstage/ui';
 import { useOwnedPortfolioRepositories } from '../../hooks/useOwnedPortfolioEntities';
 import { useRelatedEntities } from '../../hooks/useRelatedEntities';
 import { readEntity } from '../../model/entities';
+import { gradeSummaryFields } from '../../model/portfolioGradeSummary';
 import { GradesSummary } from '../grades/GradesSummary';
 import { DetailCard } from '../shared/DetailCard';
 import { DetailRow } from '../shared/DetailRow';
@@ -60,7 +61,7 @@ function TeamOverviewContent({
 }) {
   const entityRoute = useRouteRef(entityRouteRef);
   const members = useRelatedEntities(team, 'hasMember');
-  const repositories = useOwnedPortfolioRepositories(team);
+  const repositories = useOwnedPortfolioRepositories(team, gradeSummaryFields);
   const teamHref = entityRoute(entityRouteParams(team));
 
   return (

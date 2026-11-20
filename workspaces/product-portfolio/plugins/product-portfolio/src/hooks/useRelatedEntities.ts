@@ -31,29 +31,38 @@ export interface RelatedState {
 export function useRelatedEntities(
   entity: Entity,
   relation: string,
+  fields?: string[],
 ): RelatedState {
-  return useRelatedEntitiesFromEntities([entity], relation);
+  return useEntitiesByRefs(relatedEntityRefs([entity], relation), fields);
 }
 
-export function useRelatedEntitiesFromEntities(
+export function relatedEntityRefs(
   entities: readonly Entity[],
   relation: string,
+): string[] {
+  return entities.flatMap(entity =>
+    (entity.relations ?? [])
+      .filter(r => r.type === relation)
+      .map(r => r.targetRef),
+  );
+}
+
+export function useEntitiesByRefs(
+  entityRefs: readonly string[],
+  fields?: string[],
 ): RelatedState {
   const api = useApi(catalogApiRef);
-  const refsKey = JSON.stringify(
-    [
-      ...new Set(
-        entities.flatMap(entity =>
-          (entity.relations ?? [])
-            .filter(r => r.type === relation)
-            .map(r => r.targetRef),
-        ),
-      ),
-    ].sort(),
+  const queryKey = JSON.stringify({
+    entityRefs: [...new Set(entityRefs)].sort(),
+    fields,
+  });
+  const query = useMemo(
+    () => JSON.parse(queryKey) as { entityRefs: string[]; fields?: string[] },
+    [queryKey],
   );
-  const refs = useMemo(() => JSON.parse(refsKey) as string[], [refsKey]);
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => setAttempt(a => a + 1), []);
+  const requestKey = `${attempt}:${queryKey}`;
   const [state, setState] = useState<{
     key: string;
     loading: boolean;
@@ -64,15 +73,19 @@ export function useRelatedEntitiesFromEntities(
 
   useEffect(() => {
     let active = true;
-    setState({ key: refsKey, loading: true, entities: [], partial: false });
+    setState({ key: requestKey, loading: true, entities: [], partial: false });
 
     async function resolve() {
       try {
+        const { entityRefs: refs, ...options } = query;
         const resolvedEntities: Entity[] = [];
 
         for (let i = 0; i < refs.length; i += 100) {
           const batch = refs.slice(i, i + 100);
-          const response = await api.getEntitiesByRefs({ entityRefs: batch });
+          const response = await api.getEntitiesByRefs({
+            ...options,
+            entityRefs: batch,
+          });
 
           if (!active) {
             return;
@@ -94,7 +107,7 @@ export function useRelatedEntitiesFromEntities(
 
         if (active) {
           setState({
-            key: refsKey,
+            key: requestKey,
             loading: false,
             entities: unique,
             partial: unique.length < refs.length,
@@ -103,7 +116,7 @@ export function useRelatedEntitiesFromEntities(
       } catch {
         if (active) {
           setState({
-            key: refsKey,
+            key: requestKey,
             loading: false,
             entities: [],
             partial: false,
@@ -118,10 +131,10 @@ export function useRelatedEntitiesFromEntities(
     return () => {
       active = false;
     };
-  }, [api, refs, refsKey, attempt]);
+  }, [api, query, requestKey]);
 
   return {
-    ...(state.key === refsKey
+    ...(state.key === requestKey
       ? state
       : { loading: true, entities: [], partial: false }),
     retry,

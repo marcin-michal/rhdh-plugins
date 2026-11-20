@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import { useMemo } from 'react';
 import {
   Cell,
   Flex,
@@ -25,8 +26,10 @@ import {
 } from '@backstage/ui';
 import { useNavigate } from 'react-router-dom';
 import type { RelatedState } from '../../hooks/useRelatedEntities';
-import { aggregatePortfolioChi } from '../../model/portfolioChi';
-import { readEntity } from '../../model/entities';
+import {
+  knownGrades,
+  summarizePortfolioGrades,
+} from '../../model/portfolioGradeSummary';
 import { AsyncState } from '../shared/AsyncState';
 import { ChiObservationMetadata } from '../shared/ChiObservationMetadata';
 import { DetailCard } from '../shared/DetailCard';
@@ -76,35 +79,32 @@ export function GradesSummary({
   entityHref?: string;
 }) {
   const navigate = useNavigate();
-  const repositories = state.entities.filter(
-    entity => readEntity(entity).value?.category === 'repository',
+  const { byGrade, aWithScheduledDrop, latestObservationAt } = useMemo(
+    () => summarizePortfolioGrades(state.entities),
+    [state.entities],
   );
-  const { aggregate, snapshotsUsed, latestObservationAt } =
-    aggregatePortfolioChi(repositories, Date.now());
-  const counts = aggregate.counts;
-  const gradeRows: GradeRow[] = [
+  const rows = [
     {
       id: 'a',
       label: 'A',
-      count: Math.max(0, counts.byGrade.A - counts.aWithScheduledDrop),
+      count: byGrade.A - aWithScheduledDrop,
       tone: gradeToneForId('a'),
     },
     {
       id: 'a-with-drop',
       label: 'A with drop',
-      count: counts.aWithScheduledDrop,
+      count: aWithScheduledDrop,
       tone: gradeToneForId('a-with-drop'),
     },
-    ...(['B', 'C', 'D', 'E', 'F'] as const).map(
+    ...knownGrades.slice(1).map(
       (grade): GradeRow => ({
         id: grade.toLowerCase(),
         label: grade,
-        count: counts.byGrade[grade],
+        count: byGrade[grade],
         tone: gradeToneForId(grade.toLowerCase()),
       }),
     ),
-  ];
-  const rows = gradeRows.filter(row => row.count > 0);
+  ].filter(row => row.count > 0);
   const { tableProps } = useTable({
     mode: 'complete',
     data: rows,
@@ -114,12 +114,7 @@ export function GradesSummary({
   return (
     <DetailCard title="Grades">
       <Flex direction="column" gap="4">
-        <ChiObservationMetadata
-          state={state}
-          repositoryCount={repositories.length}
-          summary={{ aggregate, snapshotsUsed, latestObservationAt }}
-          showObservationStatus={false}
-        />
+        <ChiObservationMetadata latestObservationAt={latestObservationAt} />
 
         <AsyncState
           state={state}

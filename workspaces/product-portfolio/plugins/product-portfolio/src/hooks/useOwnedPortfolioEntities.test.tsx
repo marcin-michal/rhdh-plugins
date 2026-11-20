@@ -106,6 +106,14 @@ describe('useOwnedPortfolioEntities', () => {
       ['repository-1', 'repository-3', 'repository-5'],
     );
     expect(result.current.partial).toBe(false);
+    expect(
+      getEntitiesByRefs.mock.calls.flatMap(([request]) => request.entityRefs),
+    ).toEqual([
+      'resource:pyxis/listing-1',
+      'resource:pyxis/repository-3',
+      'resource:pyxis/repository-5',
+      'resource:pyxis/repository-1',
+    ]);
 
     const repositories = result.current.entities;
     rerender();

@@ -15,12 +15,13 @@
  */
 
 import { useMemo } from 'react';
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import type { Entity } from '@backstage/catalog-model';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { readEntity, sortEntities } from '../model/entities';
 import {
+  relatedEntityRefs,
+  useEntitiesByRefs,
   useRelatedEntities,
-  useRelatedEntitiesFromEntities,
 } from './useRelatedEntities';
 
 export function useOwnedPortfolioEntities(team: Entity) {
@@ -49,32 +50,36 @@ export function useOwnedPortfolioEntities(team: Entity) {
   };
 }
 
-export function useOwnedPortfolioRepositories(team: Entity) {
-  const owned = useOwnedPortfolioEntities(team);
-  const linked = useRelatedEntitiesFromEntities(
-    owned.listings,
-    PYXIS_RELATIONS.hasRepository,
+export function useOwnedPortfolioRepositories(team: Entity, fields?: string[]) {
+  const directRefs = relatedEntityRefs([team], 'ownerOf');
+  const ownedFields = fields ? [...fields, 'relations'] : undefined;
+  const owned = useEntitiesByRefs(directRefs, ownedFields);
+  const listings = useMemo(
+    () =>
+      owned.entities.filter(e => readEntity(e).value?.category === 'listing'),
+    [owned.entities],
   );
-  const repositories = useMemo(() => {
-    const unique = new Map<string, Entity>();
+  const directRefSet = new Set(directRefs);
+  const linkedRefs = relatedEntityRefs(
+    listings,
+    PYXIS_RELATIONS.hasRepository,
+  ).filter(ref => !directRefSet.has(ref));
+  const linked = useEntitiesByRefs(linkedRefs, fields);
 
-    for (const repository of [...owned.repositories, ...linked.entities]) {
-      if (readEntity(repository).value?.category === 'repository') {
-        unique.set(stringifyEntityRef(repository), repository);
-      }
-    }
-
-    return [...unique.values()].sort(sortEntities);
-  }, [linked.entities, owned.repositories]);
+  const repositories = useMemo(
+    () =>
+      [...owned.entities, ...linked.entities]
+        .filter(e => readEntity(e).value?.category === 'repository')
+        .sort(sortEntities),
+    [owned.entities, linked.entities],
+  );
 
   return {
     loading: owned.loading || linked.loading,
     entities: repositories,
     partial: owned.partial || linked.partial,
     error: owned.error ?? linked.error,
-    retry: () => {
-      owned.retry();
-      linked.retry();
-    },
+    // Resolve ownership again before rebuilding the linked requests.
+    retry: owned.retry,
   };
 }

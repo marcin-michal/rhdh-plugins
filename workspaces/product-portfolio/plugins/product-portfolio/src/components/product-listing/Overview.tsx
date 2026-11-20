@@ -26,6 +26,7 @@ import {
   type SourceListing,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { useRelatedEntities } from '../../hooks/useRelatedEntities';
+import { gradeSummaryFields } from '../../model/portfolioGradeSummary';
 import { readEntity, type PortfolioEntity } from '../../model/entities';
 import {
   publicationState,
@@ -53,6 +54,7 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
   const repositories = useRelatedEntities(
     model.entity,
     PYXIS_RELATIONS.hasRepository,
+    gradeSummaryFields,
   );
   const team = teamState.entities[0];
   const teamModel = team ? readEntity(team).value : undefined;

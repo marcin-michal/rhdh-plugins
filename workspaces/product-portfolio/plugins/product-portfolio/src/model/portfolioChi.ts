@@ -21,7 +21,7 @@ import {
   type ChiImageObservation,
   type ChiGrade,
 } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
-import { readRepositoryChi } from './repositoryChi';
+import { hasVisibleGrades, readRepositoryChi } from './repositoryChi';
 
 export type PortfolioChiGrade = ChiGrade | 'Unknown';
 
@@ -74,40 +74,44 @@ export function collectPortfolioChiData(
     return latest;
   }, null);
 
-  const observations = new Map<string, ImageOccurrence>();
+  const imagesByGrade = new Map<PortfolioChiGrade, ImageOccurrence[]>();
   for (const { repositoryRef: ref, projection } of inputs) {
-    const repository = unique.get(ref)!;
-    if (!projection || !['ready', 'partial'].includes(projection.state)) {
+    const snapshot = projection?.snapshot;
+    if (
+      !snapshot ||
+      !hasVisibleGrades(projection.state, snapshot.coverage.grades)
+    ) {
       continue;
     }
 
-    for (const image of projection.snapshot?.images ?? []) {
-      const key = JSON.stringify([ref, image.imageId]);
-      const previous = observations.get(key);
+    const repository = unique.get(ref)!;
+    const observations = new Map<string, ImageOccurrence>();
+    for (const image of snapshot.images) {
+      const previous = observations.get(image.imageId);
+      if (previous) {
+        previous.image = {
+          ...previous.image,
+          selectedIn: [
+            ...new Set([...previous.image.selectedIn, ...image.selectedIn]),
+          ],
+        };
+        continue;
+      }
 
-      observations.set(key, {
-        repository,
-        image: previous
-          ? {
-              ...previous.image,
-              selectedIn: [
-                ...new Set([...previous.image.selectedIn, ...image.selectedIn]),
-              ],
-            }
-          : image,
-      });
+      const occurrence = { repository, image };
+      observations.set(image.imageId, occurrence);
+      const grade = image.currentGrade ?? 'Unknown';
+      const images = imagesByGrade.get(grade) ?? [];
+      images.push(occurrence);
+      imagesByGrade.set(grade, images);
     }
   }
 
   const order: PortfolioChiGrade[] = ['A', 'B', 'C', 'D', 'E', 'F', 'Unknown'];
-  const buckets = order
-    .map(grade => ({
-      grade,
-      images: [...observations.values()].filter(
-        v => (v.image.currentGrade ?? 'Unknown') === grade,
-      ),
-    }))
-    .filter(bucket => bucket.images.length > 0);
+  const buckets = order.flatMap(grade => {
+    const images = imagesByGrade.get(grade);
+    return images ? [{ grade, images }] : [];
+  });
 
   return {
     inputs,

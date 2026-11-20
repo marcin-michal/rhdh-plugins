@@ -405,5 +405,10 @@ describe('Grades', () => {
 
     await user.click(gradeA);
     expect(screen.queryByRole('columnheader', { name: 'Name' })).toBeNull();
+
+    await user.click(gradeA);
+    expect(
+      screen.getAllByRole('link', { name: /^portfolio\/repository-/ })[0],
+    ).toHaveTextContent(firstRepositoryLink.textContent!);
   });
 });
