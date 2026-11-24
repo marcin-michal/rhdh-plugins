@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import type { Entity } from '@backstage/catalog-model';
+import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
 import type { QueryEntitiesResponse } from '@backstage/catalog-client';
 import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
 import {
@@ -23,7 +23,7 @@ import {
   entityRouteRef,
 } from '@backstage/plugin-catalog-react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { act, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   PYXIS_ANNOTATIONS,
@@ -78,6 +78,99 @@ describe('PortfolioTable', () => {
       resolveQuery({ items: [], totalItems: 0, pageInfo: {} });
     });
     expect(await screen.findByText(emptyMessage)).toBeInTheDocument();
+  });
+
+  it.each(['listing', 'repository'] as const)(
+    'shows %s rows while the team directory is loading',
+    async kind => {
+      const owned = fixtureEntity(kind);
+      const unowned = fixtureEntity(kind, 2);
+      const team = fixtureEntity('team');
+      owned.relations = [
+        { type: 'ownedBy', targetRef: stringifyEntityRef(team) },
+      ];
+      const catalogApi = new InMemoryCatalogClient({
+        entities: [owned, unowned],
+      });
+      let resolveTeams!: (teams: Entity[]) => void;
+      const pendingTeams = new Promise<Entity[]>(resolve => {
+        resolveTeams = resolve;
+      });
+      jest
+        .spyOn(catalogApi, 'streamEntities')
+        .mockImplementationOnce(async function* streamTeams() {
+          yield await pendingTeams;
+        });
+
+      const { queryEntities, streamEntities } = await renderTable(
+        kind,
+        [],
+        catalogApi,
+      );
+      expect(
+        await screen.findByRole('link', { name: owned.metadata.title }),
+      ).toBeVisible();
+      const ownedRow = screen.getByRole('row', {
+        name: new RegExp(owned.metadata.title!),
+      });
+      const unownedRow = screen.getByRole('row', {
+        name: new RegExp(unowned.metadata.title!),
+      });
+      expect(
+        within(ownedRow).getByRole('progressbar', {
+          name: 'Loading team names',
+        }),
+      ).toBeVisible();
+      expect(within(unownedRow).getByText('—')).toBeVisible();
+      expect(
+        within(unownedRow).queryByLabelText('Loading team names'),
+      ).not.toBeInTheDocument();
+
+      await act(async () => resolveTeams([team]));
+      expect(
+        await screen.findByRole('link', { name: 'team 1' }),
+      ).toHaveAttribute('href', '/catalog/pyxis/group/team-1');
+      expect(
+        screen.queryByLabelText('Loading team names'),
+      ).not.toBeInTheDocument();
+      expect(queryEntities).toHaveBeenCalledTimes(1);
+      expect(streamEntities).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('keeps listings visible when team loading fails and retries just the directory', async () => {
+    const user = userEvent.setup();
+    const catalogApi = new InMemoryCatalogClient({
+      entities: portfolioFixtures(13),
+    });
+    jest.spyOn(catalogApi, 'streamEntities').mockImplementationOnce(() => {
+      throw new Error('Catalog unavailable');
+    });
+    const { queryEntities, streamEntities } = await renderTable(
+      'listing',
+      [],
+      catalogApi,
+    );
+
+    expect(
+      await screen.findByRole('link', { name: 'Listing 1' }),
+    ).toBeVisible();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Team names could not be loaded.',
+    );
+    expect(
+      screen.queryByLabelText('Loading team names'),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Retry team names' }));
+
+    expect(await screen.findByRole('link', { name: 'team 1' })).toBeVisible();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(streamEntities).toHaveBeenCalledTimes(2);
+    expect(
+      queryEntities.mock.calls.filter(
+        ([request]) => request && 'offset' in request,
+      ),
+    ).toHaveLength(1);
   });
 
   it('shows listing columns and uses the repository and team counts', async () => {

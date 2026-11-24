@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import type { Entity } from '@backstage/catalog-model';
 import {
   Cell,
   CellText,
   Flex,
   Link,
+  Skeleton,
   type ColumnConfig,
   type TableItem,
 } from '@backstage/ui';
@@ -44,13 +45,16 @@ interface PortfolioTeamLink {
   href: string;
 }
 
-export interface PortfolioTableRow extends TableItem {
+export interface PortfolioTableItem extends TableItem {
   entity: Entity;
+}
+
+interface PortfolioTableRow extends PortfolioTableItem {
   name: string;
   href: string;
   description: string;
   repositoryPath?: string;
-  teams: PortfolioTeamLink[];
+  teams: PortfolioTeamLink[] | undefined;
   repositoryCount?: number;
   memberCount?: number;
   publishedState: string;
@@ -72,11 +76,11 @@ function sourceTeamId(entity: Entity): string | undefined {
 }
 
 export function createPortfolioRows(
-  entities: Entity[],
-  teamDirectory: ReadonlyMap<string, PortfolioTeam>,
+  items: PortfolioTableItem[],
+  teamDirectory: ReadonlyMap<string, PortfolioTeam> | undefined,
   getEntityHref: (entity: Entity) => string,
 ): PortfolioTableRow[] {
-  return entities.map(entity => {
+  return items.map(({ id, entity }) => {
     const model = readEntity(entity).value;
     const teamKeys = (entity.relations ?? [])
       .filter(relation => ['ownedBy', 'memberOf'].includes(relation.type))
@@ -94,7 +98,7 @@ export function createPortfolioRows(
 
     const teamsByRef = new Map<string, PortfolioTeam>();
     for (const key of new Set(teamKeys)) {
-      const team = teamDirectory.get(key);
+      const team = teamDirectory?.get(key);
       if (team) {
         teamsByRef.set(team.ref, team);
       }
@@ -112,17 +116,20 @@ export function createPortfolioRows(
         : undefined;
 
     return {
-      id: entity.metadata.uid ?? stringifyEntityRef(entity),
+      id,
       entity,
       name: model?.title ?? entity.metadata.title ?? entity.metadata.name,
       href: getEntityHref(entity),
       description: model?.description ?? '',
       repositoryPath: model?.path,
-      teams: [...teamsByRef.values()].map(team => ({
-        ref: team.ref,
-        label: team.label,
-        href: getEntityHref(team.entity),
-      })),
+      teams:
+        !teamDirectory && teamKeys.length > 0
+          ? undefined
+          : [...teamsByRef.values()].map(team => ({
+              ref: team.ref,
+              label: team.label,
+              href: getEntityHref(team.entity),
+            })),
       repositoryCount,
       memberCount:
         model?.category === 'team'
@@ -157,9 +164,23 @@ const teamColumn: ColumnConfig<PortfolioTableRow> = {
   label: 'Team',
   width: '2fr',
   cell: row => {
+    if (!row.teams) {
+      return (
+        <Cell>
+          <Skeleton
+            role="progressbar"
+            aria-label="Loading team names"
+            width="65%"
+            height={16}
+          />
+        </Cell>
+      );
+    }
+
     if (row.teams.length === 0) {
       return <CellText title="—" color="secondary" />;
     }
+
     return (
       <Cell>
         <Flex direction="column" gap="1">

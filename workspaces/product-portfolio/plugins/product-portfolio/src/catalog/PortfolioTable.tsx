@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 import { useApi, useRouteRef } from '@backstage/core-plugin-api';
 import {
   catalogApiRef,
@@ -38,7 +39,7 @@ import {
   createPortfolioRows,
   portfolioColumnsByKind,
   type PortfolioTeam,
-  type PortfolioTableRow,
+  type PortfolioTableItem,
 } from './columns';
 import type { PortfolioCategory } from './filterState';
 import {
@@ -59,25 +60,49 @@ const emptyTeamDirectory: TeamDirectory = new Map();
 
 export function PortfolioTable(props: PortfolioTableProps) {
   const catalogApi = useApi(catalogApiRef);
+  const needsTeamDirectory = props.kind !== 'team';
+  const [loaded, setLoaded] = useState<{
+    catalogApi: CatalogApi;
+    directory: TeamDirectory | 'error';
+  }>();
+  const teamDirectory =
+    loaded?.catalogApi === catalogApi ? loaded.directory : undefined;
 
   const loadTeamDirectory = useMemo(() => {
-    let directory: Promise<TeamDirectory> | undefined;
+    let directory: Promise<TeamDirectory | 'error'> | undefined;
     return () => {
-      directory ??= fetchPortfolioTeamDirectory(catalogApi).catch(error => {
+      directory ??= fetchPortfolioTeamDirectory(catalogApi).catch(() => {
         directory = undefined;
-        throw error;
+        return 'error' as const;
       });
 
       return directory;
     };
   }, [catalogApi]);
 
+  useEffect(() => {
+    if (!needsTeamDirectory || teamDirectory !== undefined) {
+      return undefined;
+    }
+
+    let active = true;
+    loadTeamDirectory().then(result => {
+      if (active) {
+        setLoaded({ catalogApi, directory: result });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [catalogApi, loadTeamDirectory, needsTeamDirectory, teamDirectory]);
+
   return (
     <PortfolioResults
       key={props.kind}
       {...props}
       catalogApi={catalogApi}
-      loadTeamDirectory={loadTeamDirectory}
+      teamDirectory={needsTeamDirectory ? teamDirectory : emptyTeamDirectory}
+      retryTeams={() => setLoaded(undefined)}
     />
   );
 }
@@ -87,40 +112,41 @@ function PortfolioResults({
   search,
   title,
   catalogApi,
-  loadTeamDirectory,
+  teamDirectory,
+  retryTeams,
 }: PortfolioTableProps & {
   catalogApi: CatalogApi;
-  loadTeamDirectory: () => Promise<TeamDirectory>;
+  teamDirectory: TeamDirectory | 'error' | undefined;
+  retryTeams: () => void;
 }) {
   const entityRoute = useRouteRef(entityRouteRef);
-  const { tableProps, reload } = useTable<PortfolioTableRow>({
+  const { tableProps, reload } = useTable<PortfolioTableItem>({
     mode: 'offset',
     search,
     initialSort: { column: 'name', direction: 'ascending' },
     getData: async ({ offset, pageSize, sort, search: searchTerm }) => {
       const term = searchTerm.trim();
-      const [response, teamDirectory] = await Promise.all([
-        catalogApi.queryEntities({
-          filter: portfolioEntityFilter(kind),
-          limit: pageSize,
-          offset,
-          orderFields: {
-            field: 'metadata.title',
-            order: sort?.direction === 'descending' ? 'desc' : 'asc',
-          },
-          fields: PORTFOLIO_ENTITY_FIELDS,
-          fullTextFilter: term
-            ? { term, fields: PORTFOLIO_SEARCH_FIELDS }
-            : undefined,
-        }),
-        kind === 'team' ? emptyTeamDirectory : loadTeamDirectory(),
-      ]);
+      const response = await catalogApi.queryEntities({
+        filter: portfolioEntityFilter(kind),
+        limit: pageSize,
+        offset,
+        orderFields: {
+          field: 'metadata.title',
+          order: sort?.direction === 'descending' ? 'desc' : 'asc',
+        },
+        fields: PORTFOLIO_ENTITY_FIELDS,
+        fullTextFilter: term
+          ? { term, fields: PORTFOLIO_SEARCH_FIELDS }
+          : undefined,
+      });
 
-      const rows = createPortfolioRows(response.items, teamDirectory, entity =>
-        entityRoute(entityRouteParams(entity)),
-      );
-
-      return { data: rows, totalCount: response.totalItems };
+      return {
+        data: response.items.map(entity => ({
+          id: entity.metadata.uid ?? stringifyEntityRef(entity),
+          entity,
+        })),
+        totalCount: response.totalItems,
+      };
     },
     paginationOptions: {
       pageSize: 20,
@@ -128,6 +154,16 @@ function PortfolioResults({
     },
   });
 
+  const rows = useMemo(
+    () =>
+      tableProps.data &&
+      createPortfolioRows(
+        tableProps.data,
+        teamDirectory === 'error' ? emptyTeamDirectory : teamDirectory,
+        entity => entityRoute(entityRouteParams(entity)),
+      ),
+    [tableProps.data, teamDirectory, entityRoute],
+  );
   const malformedCount = tableProps.isStale
     ? 0
     : (tableProps.data ?? []).filter(row => readEntity(row.entity).error)
@@ -157,6 +193,12 @@ function PortfolioResults({
 
   return (
     <Flex direction="column" gap="4">
+      {teamDirectory === 'error' && (
+        <Flex direction="column" gap="2">
+          <QualityNotice error message="Team names could not be loaded." />
+          <Button onPress={retryTeams}>Retry team names</Button>
+        </Flex>
+      )}
       {malformedCount > 0 && (
         <QualityNotice
           error
@@ -173,6 +215,7 @@ function PortfolioResults({
             </Text>
             <Table
               {...tableProps}
+              data={rows}
               columnConfig={portfolioColumnsByKind[kind]}
               emptyState={emptyState}
             />
