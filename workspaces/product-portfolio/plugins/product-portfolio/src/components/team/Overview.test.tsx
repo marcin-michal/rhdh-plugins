@@ -39,9 +39,7 @@ async function renderTeamOverview(team: Entity, entities: Entity[]) {
   );
   const getEntitiesByRefs = jest.fn(
     async ({ entityRefs }: { entityRefs: string[] }) => ({
-      items: entityRefs
-        .map(ref => entitiesByRef.get(ref))
-        .filter((entity): entity is Entity => Boolean(entity)),
+      items: entityRefs.map(ref => entitiesByRef.get(ref)),
     }),
   );
 

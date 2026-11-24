@@ -61,7 +61,9 @@ function TeamOverviewContent({
 }) {
   const entityRoute = useRouteRef(entityRouteRef);
   const members = useRelatedEntities(team, 'hasMember');
-  const repositories = useOwnedPortfolioRepositories(team, gradeSummaryFields);
+  const repositories = useOwnedPortfolioRepositories(team, {
+    fields: gradeSummaryFields,
+  });
   const teamHref = entityRoute(entityRouteParams(team));
 
   return (

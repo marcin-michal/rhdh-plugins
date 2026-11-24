@@ -54,7 +54,7 @@ function ListingOverviewContent({ model }: { model: PortfolioEntity }) {
   const repositories = useRelatedEntities(
     model.entity,
     PYXIS_RELATIONS.hasRepository,
-    gradeSummaryFields,
+    { fields: gradeSummaryFields },
   );
   const team = teamState.entities[0];
   const teamModel = team ? readEntity(team).value : undefined;

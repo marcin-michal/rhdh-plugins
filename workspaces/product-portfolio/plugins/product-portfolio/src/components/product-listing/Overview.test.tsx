@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 import {
   catalogApiRef,
   EntityProvider,
@@ -48,9 +48,7 @@ describe('ListingOverview', () => {
     );
     const getEntitiesByRefs = jest.fn(
       async ({ entityRefs }: { entityRefs: string[] }) => ({
-        items: entityRefs
-          .map(ref => entitiesByRef.get(ref))
-          .filter((entity): entity is Entity => Boolean(entity)),
+        items: entityRefs.map(ref => entitiesByRef.get(ref)),
       }),
     );
 
@@ -123,9 +121,7 @@ describe('ListingOverview', () => {
     );
     const getEntitiesByRefs = jest.fn(
       async ({ entityRefs }: { entityRefs: string[] }) => ({
-        items: entityRefs
-          .map(ref => entitiesByRef.get(ref))
-          .filter((entity): entity is Entity => Boolean(entity)),
+        items: entityRefs.map(ref => entitiesByRef.get(ref)),
       }),
     );
 

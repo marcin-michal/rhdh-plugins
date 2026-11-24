@@ -127,7 +127,9 @@ export function Grades() {
 }
 
 function ListingGrades({ entity }: { entity: Entity }) {
-  const related = useRelatedEntities(entity, PYXIS_RELATIONS.hasRepository);
+  const related = useRelatedEntities(entity, PYXIS_RELATIONS.hasRepository, {
+    smallBatches: true,
+  });
   return (
     <GradesContent
       related={related}
@@ -152,7 +154,7 @@ function RepositoryGrades({ entity }: { entity: Entity }) {
 }
 
 function TeamGrades({ entity }: { entity: Entity }) {
-  const related = useOwnedPortfolioRepositories(entity);
+  const related = useOwnedPortfolioRepositories(entity, { smallBatches: true });
   return (
     <GradesContent
       related={related}

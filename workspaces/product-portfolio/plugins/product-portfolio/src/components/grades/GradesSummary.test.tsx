@@ -107,16 +107,22 @@ describe('GradesSummary', () => {
       const latest = '2026-11-01T00:00Z';
       hiddenHealth.snapshot!.observedAt = latest;
       hidden.spec!.pyxisChi = JSON.parse(JSON.stringify(hiddenHealth));
-      listing.relations!.push(
-        {
+      listing.relations!.push({
+        type: PYXIS_RELATIONS.hasRepository,
+        targetRef: stringifyEntityRef(hidden),
+      });
+      for (let i = 0; i < 100; i++) {
+        listing.relations!.push({
           type: PYXIS_RELATIONS.hasRepository,
-          targetRef: stringifyEntityRef(hidden),
-        },
-        {
-          type: PYXIS_RELATIONS.hasRepository,
-          targetRef: 'resource:pyxis/inaccessible',
-        },
-      );
+          targetRef: `resource:pyxis/inaccessible-linked-${i}`,
+        });
+        if (name === 'team-1') {
+          entity.relations!.push({
+            type: 'ownerOf',
+            targetRef: `resource:pyxis/inaccessible-owned-${i}`,
+          });
+        }
+      }
 
       const entitiesByRef = new Map(
         [...entities, hidden].map(candidate => [
@@ -179,8 +185,11 @@ describe('GradesSummary', () => {
             ref.startsWith('resource:pyxis/repository-'),
           ),
         );
-      expect(overviewRepositoryRequests.length).toBeGreaterThan(0);
-      for (const { fields } of overviewRepositoryRequests) {
+      expect(overviewRepositoryRequests).toHaveLength(
+        name === 'team-1' ? 2 : 1,
+      );
+      for (const { entityRefs, fields } of overviewRepositoryRequests) {
+        expect(entityRefs.length).toBeGreaterThan(100);
         expect(fields).toContain('spec.pyxisChi.snapshot.counts.byGrade');
         expect(fields).not.toContain('spec.pyxisChi');
         expect(fields).not.toContain('spec.pyxisChi.snapshot');
@@ -207,9 +216,17 @@ describe('GradesSummary', () => {
       expect(
         document.querySelector(`time[datetime="${latest}"]`),
       ).toBeInTheDocument();
-      expect(
-        getEntitiesByRefs.mock.calls.every(([request]) => !request.fields),
-      ).toBe(true);
+      const detailRequests = getEntitiesByRefs.mock.calls.map(
+        ([request]) => request,
+      );
+      expect(detailRequests).toHaveLength(name === 'team-1' ? 4 : 2);
+      for (const { entityRefs, fields } of detailRequests) {
+        expect(entityRefs.length).toBeLessThanOrEqual(100);
+        expect(fields).toBeUndefined();
+      }
+      expect(detailRequests.flatMap(({ entityRefs }) => entityRefs)).toEqual(
+        overviewRepositoryRequests.flatMap(({ entityRefs }) => entityRefs),
+      );
     },
   );
 

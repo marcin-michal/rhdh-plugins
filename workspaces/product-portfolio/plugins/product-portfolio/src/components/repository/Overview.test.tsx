@@ -82,7 +82,9 @@ function repositoryWithDetails(
 
 async function renderRepositoryOverview(entity: Entity) {
   const getEntitiesByRefs = jest.fn(
-    async (_options: { entityRefs: string[] }) => ({ items: [] as Entity[] }),
+    async ({ entityRefs }: { entityRefs: string[] }) => ({
+      items: entityRefs.map(() => undefined),
+    }),
   );
 
   return renderInTestApp(

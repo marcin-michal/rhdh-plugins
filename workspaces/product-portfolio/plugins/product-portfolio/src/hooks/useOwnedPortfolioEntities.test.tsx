@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { TestApiProvider } from '@backstage/test-utils';
 import { renderHook, waitFor } from '@testing-library/react';
@@ -31,9 +31,7 @@ describe('useOwnedPortfolioRepositories', () => {
     );
     const getEntitiesByRefs = jest.fn(
       async ({ entityRefs }: { entityRefs: string[] }) => ({
-        items: entityRefs
-          .map(ref => entitiesByRef.get(ref))
-          .filter((entity): entity is Entity => Boolean(entity)),
+        items: entityRefs.map(ref => entitiesByRef.get(ref)),
       }),
     );
     const catalogApi = { getEntitiesByRefs };

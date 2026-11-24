@@ -18,12 +18,23 @@ import { useMemo } from 'react';
 import type { Entity } from '@backstage/catalog-model';
 import { PYXIS_RELATIONS } from '@red-hat-developer-hub/backstage-plugin-pyxis-common';
 import { readEntity, sortEntities } from '../model/entities';
-import { relatedEntityRefs, useEntitiesByRefs } from './useRelatedEntities';
+import {
+  relatedEntityRefs,
+  useEntitiesByRefs,
+  type RelatedEntityReadOptions,
+} from './useRelatedEntities';
 
-export function useOwnedPortfolioRepositories(team: Entity, fields?: string[]) {
+export function useOwnedPortfolioRepositories(
+  team: Entity,
+  options: RelatedEntityReadOptions = {},
+) {
   const directRefs = relatedEntityRefs([team], 'ownerOf');
+  const { fields } = options;
   const ownedFields = fields ? [...fields, 'relations'] : undefined;
-  const owned = useEntitiesByRefs(directRefs, ownedFields);
+  const owned = useEntitiesByRefs(directRefs, {
+    ...options,
+    fields: ownedFields,
+  });
   const listings = useMemo(
     () =>
       owned.entities.filter(e => readEntity(e).value?.category === 'listing'),
@@ -34,7 +45,7 @@ export function useOwnedPortfolioRepositories(team: Entity, fields?: string[]) {
     listings,
     PYXIS_RELATIONS.hasRepository,
   ).filter(ref => !directRefSet.has(ref));
-  const linked = useEntitiesByRefs(linkedRefs, fields);
+  const linked = useEntitiesByRefs(linkedRefs, options);
 
   const repositories = useMemo(
     () =>

@@ -17,8 +17,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
+import type { Entity } from '@backstage/catalog-model';
 import { sortEntities } from '../model/entities';
+
+const SMALL_BATCH_SIZE = 100;
+
+export interface RelatedEntityReadOptions {
+  fields?: string[];
+  smallBatches?: boolean;
+}
 
 export interface RelatedState {
   loading: boolean;
@@ -31,9 +38,9 @@ export interface RelatedState {
 export function useRelatedEntities(
   entity: Entity,
   relation: string,
-  fields?: string[],
+  options?: RelatedEntityReadOptions,
 ): RelatedState {
-  return useEntitiesByRefs(relatedEntityRefs([entity], relation), fields);
+  return useEntitiesByRefs(relatedEntityRefs([entity], relation), options);
 }
 
 export function relatedEntityRefs(
@@ -49,15 +56,19 @@ export function relatedEntityRefs(
 
 export function useEntitiesByRefs(
   entityRefs: readonly string[],
-  fields?: string[],
+  { fields, smallBatches = false }: RelatedEntityReadOptions = {},
 ): RelatedState {
   const api = useApi(catalogApiRef);
   const queryKey = JSON.stringify({
     entityRefs: [...new Set(entityRefs)].sort(),
     fields,
+    smallBatches,
   });
   const query = useMemo(
-    () => JSON.parse(queryKey) as { entityRefs: string[]; fields?: string[] },
+    () =>
+      JSON.parse(queryKey) as RelatedEntityReadOptions & {
+        entityRefs: string[];
+      },
     [queryKey],
   );
   const [attempt, setAttempt] = useState(0);
@@ -77,42 +88,37 @@ export function useEntitiesByRefs(
 
     async function resolve() {
       try {
-        const { entityRefs: refs, ...options } = query;
-        const resolvedEntities: Entity[] = [];
+        const {
+          entityRefs: refs,
+          smallBatches: limitBatchSize,
+          ...options
+        } = query;
+        const batchSize = limitBatchSize ? SMALL_BATCH_SIZE : refs.length;
+        const entities: Entity[] = [];
 
-        for (let i = 0; i < refs.length; i += 100) {
-          const batch = refs.slice(i, i + 100);
-          const response = await api.getEntitiesByRefs({
+        for (let i = 0; i < refs.length; i += batchSize) {
+          const { items } = await api.getEntitiesByRefs({
             ...options,
-            entityRefs: batch,
+            entityRefs: limitBatchSize ? refs.slice(i, i + batchSize) : refs,
           });
 
           if (!active) {
             return;
           }
 
-          resolvedEntities.push(
-            ...response.items.filter(
-              (v): v is Entity =>
-                Boolean(v) && batch.includes(stringifyEntityRef(v!)),
-            ),
-          );
+          for (const entity of items) {
+            if (entity) {
+              entities.push(entity);
+            }
+          }
         }
 
-        const unique = [
-          ...new Map(
-            resolvedEntities.map(v => [stringifyEntityRef(v), v]),
-          ).values(),
-        ].sort(sortEntities);
-
-        if (active) {
-          setState({
-            key: requestKey,
-            loading: false,
-            entities: unique,
-            partial: unique.length < refs.length,
-          });
-        }
+        setState({
+          key: requestKey,
+          loading: false,
+          entities: entities.sort(sortEntities),
+          partial: entities.length < refs.length,
+        });
       } catch {
         if (active) {
           setState({

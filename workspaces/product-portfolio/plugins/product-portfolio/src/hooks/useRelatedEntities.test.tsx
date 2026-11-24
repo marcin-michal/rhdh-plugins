@@ -23,30 +23,61 @@ import { fixtureEntity } from '../testUtils/fixtures';
 import { useRelatedEntities } from './useRelatedEntities';
 
 describe('portfolio relation resolution', () => {
-  it('batches at 100 and marks omitted refs partial', async () => {
-    const entity = fixtureEntity('listing');
-    entity.relations = Array.from({ length: 201 }, (_, i) => ({
-      type: 'pyxisHasRepository',
-      targetRef: `resource:pyxis/repository-${i + 1}`,
-    }));
-    const getEntitiesByRefs = jest.fn(async () => ({
-      items: [fixtureEntity('repository')],
-    }));
-    const wrapper = ({ children }: PropsWithChildren) => (
-      <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
-        {children}
-      </TestApiProvider>
-    );
-    const { result } = renderHook(
-      () => useRelatedEntities(entity, 'pyxisHasRepository'),
-      { wrapper },
-    );
-    expect(result.current.loading).toBe(true);
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(getEntitiesByRefs.mock.calls).toHaveLength(3);
-    expect(result.current.partial).toBe(true);
-    expect(result.current.entities).toHaveLength(1);
-  });
+  it.each([
+    { mode: 'projected', fields: ['kind', 'metadata'] },
+    { mode: 'unprojected', fields: undefined },
+  ])(
+    'lets the catalog client batch $mode reads and reports missing targets',
+    async ({ fields }) => {
+      const entity = fixtureEntity('listing');
+      const first = fixtureEntity('repository', 1);
+      const second = fixtureEntity('repository', 2);
+      first.metadata.title = 'Zebra';
+      second.metadata.title = 'Albatross';
+      const entitiesByRef = new Map(
+        [first, second].map(repository => [
+          stringifyEntityRef(repository),
+          repository,
+        ]),
+      );
+      const refs = Array.from(
+        { length: 201 },
+        (_, i) => `resource:pyxis/repository-${i + 1}`,
+      ).sort();
+      entity.relations = [...refs, refs[0]].map(targetRef => ({
+        type: 'pyxisHasRepository',
+        targetRef,
+      }));
+      const getEntitiesByRefs = jest.fn(
+        async ({ entityRefs }: { entityRefs: string[] }) => ({
+          items: entityRefs.map(ref => entitiesByRef.get(ref)),
+        }),
+      );
+      const wrapper = ({ children }: PropsWithChildren) => (
+        <TestApiProvider apis={[[catalogApiRef, { getEntitiesByRefs }]]}>
+          {children}
+        </TestApiProvider>
+      );
+      const { result } = renderHook(
+        () =>
+          useRelatedEntities(
+            entity,
+            'pyxisHasRepository',
+            fields ? { fields } : undefined,
+          ),
+        { wrapper },
+      );
+      expect(result.current.loading).toBe(true);
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(getEntitiesByRefs).toHaveBeenCalledTimes(1);
+      expect(getEntitiesByRefs).toHaveBeenCalledWith({
+        entityRefs: refs,
+        fields,
+      });
+      expect(result.current.partial).toBe(true);
+      expect(result.current.entities).toEqual([second, first]);
+    },
+  );
   it('redacts request failures and retries without leaking error details', async () => {
     const entity = fixtureEntity('listing');
     entity.relations = [
@@ -93,7 +124,7 @@ describe('portfolio relation resolution', () => {
     expect(getEntitiesByRefs).not.toHaveBeenCalled();
   });
 
-  it('drops stale results and clears the previous entity list when relation refs change', async () => {
+  it('drops stale results and stops requesting small batches when relation refs change', async () => {
     const firstRepository = fixtureEntity('repository', 1);
     const secondRepository = fixtureEntity('repository', 2);
     const firstParent = fixtureEntity('listing');
@@ -102,6 +133,10 @@ describe('portfolio relation resolution', () => {
         type: 'owns',
         targetRef: stringifyEntityRef(firstRepository),
       },
+      ...Array.from({ length: 100 }, (_, i) => ({
+        type: 'owns',
+        targetRef: `resource:pyxis/unavailable-${i}`,
+      })),
     ];
     const secondParent = {
       ...firstParent,
@@ -113,12 +148,13 @@ describe('portfolio relation resolution', () => {
       ],
     };
 
-    let resolveFirstRequest!: (response: { items: Entity[] }) => void;
-    const firstRequest = new Promise<{ items: Entity[] }>(resolve => {
+    type BatchResponse = { items: Array<Entity | undefined> };
+    let resolveFirstRequest!: (response: BatchResponse) => void;
+    const firstRequest = new Promise<BatchResponse>(resolve => {
       resolveFirstRequest = resolve;
     });
     const getEntitiesByRefs = jest
-      .fn()
+      .fn<Promise<BatchResponse>, [{ entityRefs: string[] }]>()
       .mockReturnValueOnce(firstRequest)
       .mockResolvedValueOnce({ items: [secondRepository] });
     const wrapper = ({ children }: PropsWithChildren) => (
@@ -127,7 +163,8 @@ describe('portfolio relation resolution', () => {
       </TestApiProvider>
     );
     const { result, rerender } = renderHook(
-      ({ entity }: { entity: Entity }) => useRelatedEntities(entity, 'owns'),
+      ({ entity }: { entity: Entity }) =>
+        useRelatedEntities(entity, 'owns', { smallBatches: true }),
       { initialProps: { entity: firstParent }, wrapper },
     );
 
@@ -139,9 +176,19 @@ describe('portfolio relation resolution', () => {
       expect(result.current.entities).toEqual([secondRepository]),
     );
     await act(async () => {
-      resolveFirstRequest({ items: [firstRepository] });
+      const [{ entityRefs }] = getEntitiesByRefs.mock.calls[0];
+      resolveFirstRequest({
+        items: entityRefs.map(ref =>
+          ref === stringifyEntityRef(firstRepository)
+            ? firstRepository
+            : undefined,
+        ),
+      });
     });
 
     expect(result.current.entities).toEqual([secondRepository]);
+    expect(
+      getEntitiesByRefs.mock.calls.map(([{ entityRefs }]) => entityRefs.length),
+    ).toEqual([100, 1]);
   });
 });

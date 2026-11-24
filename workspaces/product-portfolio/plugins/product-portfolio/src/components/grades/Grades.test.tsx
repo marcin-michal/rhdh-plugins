@@ -49,9 +49,7 @@ async function renderGrades(
   );
   const getEntitiesByRefs = jest.fn(
     async ({ entityRefs }: { entityRefs: string[] }) => ({
-      items: entityRefs
-        .map(ref => entitiesByRef.get(ref))
-        .filter((candidate): candidate is Entity => Boolean(candidate)),
+      items: entityRefs.map(ref => entitiesByRef.get(ref)),
     }),
   );
 
