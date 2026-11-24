@@ -4,6 +4,8 @@ pyxis:
       endpoint: ${PYXIS_GRAPHQL_ENDPOINT}
       certificateFile: ${PYXIS_CERTIFICATE_FILE}
       keyFile: ${PYXIS_KEY_FILE}
+      # Set only for an encrypted client private key.
+      keyPassphrase: ${PYXIS_KEY_PASSPHRASE}
       caFile: ${PYXIS_CA_FILE}
 catalog:
   providers:

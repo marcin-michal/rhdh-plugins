@@ -1,42 +1,55 @@
 # Product Portfolio — Pyxis consumer
 
 Read-only Pyxis inventory ingestion for RHDH 1.10.3 / Backstage 1.49.4. The
-workspace contains five private plugin packages and a local frontend/backend app:
+workspace contains five private plugin packages and a local frontend/backend app.
 
-- `product-portfolio`: catalog browsing, entity details and repository health views.
-- `product-portfolio-common`: neutral source identities, read envelopes and associations.
-- `pyxis-common`: source projections, admission, roster, host-binding and repository
-  CHI snapshot contracts.
-- `pyxis-node`: verified mTLS transport, validated GraphQL reads, bounded pagination,
-  normalization, latest-image CHI selection and restricted read ports.
-- `catalog-backend-module-pyxis`: catalog provider, relationship processor, guarded
-  reconciliation, cache-backed CHI enrichment, scheduling and host OpenTelemetry
-  instrumentation.
+- `product-portfolio` provides paginated catalog browsing, entity details and
+  repository grade views for both classic and new Backstage frontend systems.
+- `product-portfolio-common` defines neutral source identities, read envelopes
+  and associations.
+- `pyxis-common` defines source projections, admission, roster, host-binding
+  and repository CHI snapshot contracts.
+- `pyxis-node` handles verified mTLS transport, validated GraphQL reads, bounded
+  pagination, normalization, latest-image CHI selection and restricted read ports.
+- `catalog-backend-module-pyxis` provides catalog ingestion, relationship
+  processing, guarded reconciliation, cache-backed CHI enrichment, scheduling
+  and host OpenTelemetry instrumentation.
 
 The module imports source listings and repositories as Resources, teams as Groups,
 and member references as isolated Users in the `pyxis` namespace. Repository
 ownership comes from one `team_id`. Only direct listing repository IDs establish
-`pyxisHasRepository` / `pyxisRepositoryOf` relationships. Repository Resources are
-enriched with bounded `spec.pyxisChi` observations for the latest published image
-per configured stream and observed/expected architecture. This slice has no Product
-System, image catalog entities, email, Konflux or MCP runtime.
+`pyxisHasRepository` / `pyxisRepositoryOf` relationships. When CHI is enabled,
+repository Resources include bounded `spec.pyxisChi` snapshots of the latest
+published image per stream and architecture. Single-stream repositories without
+stream tags use `latest`. Configure expected architectures to track their coverage.
 
 Provider `vendorPolicy` defaults to `redhat-only`: only exact `redhat` records
 qualify. Set `redhat-or-unlabeled` to also admit null or missing labels. Malformed
 labels remain unresolved in both modes; other strings are excluded. A GraphQL
 null still does **not** prove a stored explicit null. Switching back to strict
 mode preserves already admitted unlabeled entities.
-Required read failures prevent the entire source-instance mutation. Catalog
-updates use deltas; scan absence and unpublished records never imply deletion.
+
+Required read failures prevent catalog mutations for the source instance.
+Successful scans apply deltas and retain previously imported records when the
+only change is scan absence or unpublished status. Deletion based on absence
+requires a confirmed internal 404 with `absenceDeletion: confirmed-internal-404`
+and `internalNotFoundValidated: true`.
 
 ## Development
 
 Use Node 22 or 24 and repository Yarn 4.18.1. Target export and installation
-acceptance use Node 24. Initial dependency versions and shared framework
-resolutions are pinned; the lockfile is authoritative.
+acceptance use Node 24. Install dependencies from the workspace root.
 
 ```sh
 YARN_ENABLE_SCRIPTS=false yarn install --immutable
+```
+
+If the SQLite native binding is missing, run `yarn rebuild better-sqlite3`
+before starting the backend or running catalog tests.
+
+Run the workspace checks from the same directory.
+
+```sh
 yarn fix --check
 yarn tsc:full
 yarn lint:all --max-warnings 0
@@ -49,26 +62,40 @@ yarn build:api-reports:only --ci
 `yarn start` starts the live frontend and catalog/auth backend. Use
 `yarn start:demo` for an explicitly labeled, frontend-only fixture demo. See the
 [frontend development guide](plugins/product-portfolio/README.md#local-development).
-No provider is registered
-without configuration. Add a local `app-config.local.yaml` using the module's
-[configuration example](plugins/catalog-backend-module-pyxis/app-config.dynamic.yaml).
-The example uses environment variables for mounted mTLS paths, never secret values.
+
 Root dependency installation is separate; workspace postinstall only invokes it
 when explicitly requested through `PYXIS_INSTALL_REPOSITORY_ROOT=true`.
 
+### Live Pyxis credentials
+
+Copy the [configuration example](plugins/catalog-backend-module-pyxis/app-config.dynamic.yaml)
+to the git-ignored `app-config.local.yaml`. Use the same source instance ID under
+`pyxis.sources` and `catalog.providers.pyxis`. Set these variables in the backend
+environment before running `yarn start`.
+
+- `PYXIS_GRAPHQL_ENDPOINT` is the Pyxis GraphQL HTTPS URL.
+- `PYXIS_CERTIFICATE_FILE` and `PYXIS_KEY_FILE` are the paths to the mounted
+  client certificate and private key PEM files.
+- `PYXIS_KEY_PASSPHRASE` supplies the secret passphrase for an encrypted private
+  key through `pyxis.sources.<sourceInstance>.keyPassphrase`. Leave the variable
+  unset for an unencrypted key.
+- `PYXIS_CA_FILE` is the optional path to a custom CA bundle. Leave it unset to
+  use the backend's default TLS trust store.
+
+The catalog module reports `pyxis-invalid-tls-material` at startup if the
+passphrase for an encrypted key is missing or incorrect.
+
 ## Verification and delivery
 
-- [Test harness and required acceptance gates](docs/testing.md)
-- [Configuration, identity and operational runbook](docs/operations.md)
-- [Dynamic OCI export, exact-host smoke and DevHub handoff](docs/delivery.md)
-- [Public ports and later consumer contracts](docs/contracts.md)
-- [Repository CHI snapshot behavior](docs/chi-snapshots.md)
+- [Release job for dynamic export, OCI packaging and RHDH installation](plugins/product-portfolio/README.md#release-job)
+- [Inventory fixtures](test/fixtures/pyxis/README.md) and [CHI fixtures](test/fixtures/pyxis/chi/README.md)
+- [Pyxis read ports](plugins/pyxis-node/src/ports.ts)
 
-Unit, transport, real TLS and real catalog tests are runnable locally. Database
-acceptance also requires PostgreSQL 16; exact-host installation requires the
-approved host image digest and registry artifacts. A successful local suite or
-export does not replace `verify:release`. That command rejects missing, skipped,
-failed or stale required evidence. OCI packaging never pushes an image.
+`yarn test:acceptance` runs local unit, transport, TLS and catalog tests.
+`yarn test:db` requires PostgreSQL 16 in addition to SQLite. Installation smoke
+tests require the approved RHDH host image digest and registry artifacts.
+`yarn verify:release` requires passing, current evidence for all release checks.
+OCI packaging builds local images for separate registry promotion.
 
 Inherited [CODEOWNERS](../../.github/CODEOWNERS) and repository
 [contribution guidance](../../CONTRIBUTING.md) continue to apply. Packages remain
