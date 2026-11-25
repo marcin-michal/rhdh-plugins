@@ -13,10 +13,6 @@ dynamicPlugins:
           menuItem:
             text: Software Index
             icon: softwareIndexIcon
-      menuItems:
-        software-index:
-          parent: default.catalog
-          priority: 10
       entityTabs:
         - path: /software-index
           title: Software Index
