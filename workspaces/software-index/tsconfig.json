@@ -11,7 +11,7 @@
   "compilerOptions": {
     "outDir": "dist-types",
     "rootDir": ".",
-    "lib": ["DOM", "DOM.Iterable", "ScriptHost", "ES2022"],
+    "lib": ["DOM", "DOM.Iterable", "ScriptHost", "ES2022", "ES2023.Intl"],
     "target": "ES2022",
     "useUnknownInCatchVariables": false,
     "jsx": "react-jsx"

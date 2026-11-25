@@ -1,0 +1,3 @@
+# catalog-backend-module-pyxis
+
+Part of the [Pyxis consumer](../../README.md). Private OCI delivery package.

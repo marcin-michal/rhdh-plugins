@@ -1,0 +1,97 @@
+# Merge this fragment into pluginConfig in a classic RHDH dynamic-plugins.yaml
+# entry. The default PluginRoot Scalprum module is used. The default Catalog
+# Overview remains untouched; Software Index views use filtered, dedicated tabs.
+dynamicPlugins:
+  frontend:
+    red-hat-developer-hub.backstage-plugin-software-index:
+      appIcons:
+        - name: softwareIndexIcon
+          importName: SoftwareIndexIcon
+      dynamicRoutes:
+        - path: /software-index
+          importName: SoftwareIndexPageExtension
+          menuItem:
+            text: Software Index
+            icon: softwareIndexIcon
+      menuItems:
+        software-index:
+          parent: default.catalog
+          priority: 10
+      entityTabs:
+        - path: /software-index
+          title: Software Index
+          mountPoint: entity.page.software-index-overview
+        - path: /repositories
+          title: Repositories
+          mountPoint: entity.page.software-index-repositories
+        - path: /product-listings
+          title: Product listings
+          mountPoint: entity.page.software-index-product-listings
+        - path: /grades
+          title: Grades
+          mountPoint: entity.page.software-index-grades
+      mountPoints:
+        - mountPoint: entity.page.software-index-overview/cards
+          importName: SoftwareIndexListingOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisListing
+        - mountPoint: entity.page.software-index-overview/cards
+          importName: SoftwareIndexRepositoryOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisRepository
+        - mountPoint: entity.page.software-index-overview/cards
+          importName: SoftwareIndexTeamOverview
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.software-index-repositories/cards
+          importName: SoftwareIndexListingRepositories
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisListing
+        - mountPoint: entity.page.software-index-repositories/cards
+          importName: SoftwareIndexTeamRepositories
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.software-index-product-listings/cards
+          importName: SoftwareIndexRepositoryProductListings
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisRepository
+        - mountPoint: entity.page.software-index-product-listings/cards
+          importName: SoftwareIndexTeamProductListings
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisTeam
+        - mountPoint: entity.page.software-index-grades/cards
+          importName: SoftwareIndexGrades
+          config:
+            layout:
+              gridColumn: '1 / -1'
+            if:
+              allOf:
+                - isPyxisSoftwareIndexEntity

@@ -1,0 +1,8 @@
+app:
+  extensions:
+    - entity-content:catalog/overview:
+        config:
+          filter:
+            $not:
+              metadata.annotations.pyxis.redhat.com/source-instance:
+                $exists: true
