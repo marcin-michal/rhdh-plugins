@@ -135,6 +135,41 @@ describe('browser-safe projection contracts', () => {
   ])('rejects unsupported and malformed DTOs safely', value => {
     expect(() => parsePyxisProjection(value)).toThrow(PyxisContractError);
   });
+  it.each([
+    {
+      kind: 'listing',
+      fields: {
+        descriptions: { short: 'Summary', long: null },
+        support: { email_address: 'support@example.com', url: null },
+      },
+    },
+    {
+      kind: 'listing',
+      fields: { descriptions: { long: 'Full description' }, support: {} },
+    },
+    {
+      kind: 'repository',
+      fields: {
+        display_data: { name: 'Example', short_description: null },
+        documentation_links: [
+          { url: 'https://example.com/guide', title: null },
+          { title: 'Guide', type: null, url: null },
+          {},
+        ],
+        contacts: [
+          { email_address: 'owner@example.com', type: null },
+          { email_address: null, type: 'Image Owner' },
+          {},
+        ],
+      },
+    },
+  ] as const)('preserves partial $kind record metadata', ({ kind, fields }) => {
+    const projection = parsePyxisProjection(fixture(kind).spec?.pyxis);
+    const record = { _id: id, ...fields };
+    expect(parsePyxisProjection({ ...projection, record }).record).toEqual(
+      record,
+    );
+  });
   it('rejects malformed records and cross-source roster metadata', () => {
     const p = parsePyxisProjection(fixture('team').spec?.pyxis);
     expect(() =>

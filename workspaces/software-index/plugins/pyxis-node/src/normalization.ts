@@ -134,6 +134,7 @@ export function classifyVendor(
 
 const date = z.string().datetime({ offset: true });
 const id = z.string().min(1).refine(isObjectId).transform(canonicalId);
+// Pyxis reads can omit or return null for metadata its object schemas mark required.
 const optionalString = z.string().nullable().optional();
 const base = { _id: id, last_update_date: date.nullable().optional() };
 const resource = {
@@ -152,30 +153,36 @@ const listingContactSchema = z.object({
     .optional(),
 });
 const repositoryContactSchema = z.object({
-  email_address: z.string(),
-  type: z.enum([
-    'Product Manager',
-    'Image Owner',
-    'Notification',
-    'Errata Writer',
-    'Doc Owner',
-    'QE Owner',
-    'Program Manager',
-  ]),
+  email_address: optionalString,
+  type: z
+    .enum([
+      'Product Manager',
+      'Image Owner',
+      'Notification',
+      'Errata Writer',
+      'Doc Owner',
+      'QE Owner',
+      'Program Manager',
+    ])
+    .nullable()
+    .optional(),
 });
 const documentationLinkSchema = z.object({
-  title: z.string(),
-  type: z.enum([
-    'Customer Case Study',
-    'Documentation',
-    'White Paper',
-    'Blog',
-    'Demo Video',
-    'Product Datasheet',
-    'Recorded Webinar',
-    'Solution Brief',
-  ]),
-  url: z.string(),
+  title: optionalString,
+  type: z
+    .enum([
+      'Customer Case Study',
+      'Documentation',
+      'White Paper',
+      'Blog',
+      'Demo Video',
+      'Product Datasheet',
+      'Recorded Webinar',
+      'Solution Brief',
+    ])
+    .nullable()
+    .optional(),
+  url: optionalString,
 });
 
 /** Minimal source schemas discard fields outside the selected projection. @public */
@@ -187,7 +194,7 @@ export const sourceSchemas = {
     repositories: z.array(id).nullable().optional(),
     contacts: z.array(listingContactSchema).nullable().optional(),
     descriptions: z
-      .object({ long: z.string(), short: z.string() })
+      .object({ long: optionalString, short: optionalString })
       .nullable()
       .optional(),
     logo: z.object({ url: optionalString }).nullable().optional(),
@@ -196,7 +203,7 @@ export const sourceSchemas = {
         description: optionalString,
         email_address: optionalString,
         phone_number: optionalString,
-        url: z.string(),
+        url: optionalString,
       })
       .nullable()
       .optional(),
@@ -208,8 +215,8 @@ export const sourceSchemas = {
     display_data: z
       .object({
         name: optionalString,
-        long_description: z.string(),
-        short_description: z.string(),
+        long_description: optionalString,
+        short_description: optionalString,
       })
       .nullable()
       .optional(),

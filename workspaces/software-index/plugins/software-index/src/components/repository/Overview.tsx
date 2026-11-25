@@ -34,6 +34,7 @@ import { ContactList } from '../shared/ContactList';
 import { DetailCard } from '../shared/DetailCard';
 import { DetailRow } from '../shared/DetailRow';
 import { Timestamp } from '../shared/Timestamp';
+import { webUrl } from '../shared/webUrl';
 
 function ValueTags({
   ariaLabel,
@@ -65,8 +66,8 @@ function ValueTags({
   );
 }
 
-function documentationLinkLabel(title: string, url: string): string {
-  const trimmedTitle = title.trim();
+function documentationLinkLabel(title: string | null | undefined, url: string) {
+  const trimmedTitle = title?.trim();
   return !trimmedTitle || trimmedTitle.toLowerCase() === 'unknown'
     ? url
     : trimmedTitle;
@@ -110,11 +111,16 @@ function RepositoryOverviewContent({
   const repositoryHref = entityRoute(entityRouteParams(model.entity));
   const description =
     repository.display_data?.long_description?.trim() ||
-    model.entity.metadata.description?.trim() ||
+    model.description?.trim() ||
     'No long description is available.';
   const contacts = repository.contacts ?? [];
-  const documentationLinks = (repository.documentation_links ?? []).filter(
-    link => link.url.trim(),
+  const documentationLinks = (repository.documentation_links ?? []).flatMap(
+    link => {
+      const url = webUrl(link.url);
+      return url
+        ? [{ url, label: documentationLinkLabel(link.title, url) }]
+        : [];
+    },
   );
   const pulls = repository.metrics?.pulls_in_last_30_days;
 
@@ -202,7 +208,7 @@ function RepositoryOverviewContent({
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {documentationLinkLabel(link.title, link.url)}
+                    {link.label}
                   </Link>
                 ))}
               </Flex>

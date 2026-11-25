@@ -38,6 +38,8 @@
       "repositories": ["200000000000000000000002"],
       "published": true,
       "deleted": false,
+      "descriptions": { "short": "Runtime tools" },
+      "support": { "email_address": "runtime@example.com", "url": null },
       "last_update_date": "2026-01-01T00:00:00Z"
     }
   ],
@@ -102,9 +104,10 @@
       "repository": "platform/unlisted",
       "display_data": {
         "name": "Unlisted",
-        "long_description": "Unlisted repository long description",
-        "short_description": "Unlisted repository short description"
+        "short_description": null
       },
+      "documentation_links": [{ "url": "https://example.com/unlisted" }],
+      "contacts": [{ "type": "Image Owner", "email_address": null }],
       "team_id": "300000000000000000000001",
       "product_listings": [],
       "published": true,

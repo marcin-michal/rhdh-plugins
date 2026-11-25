@@ -143,8 +143,9 @@ describe('ListingOverview', () => {
 
     expect(screen.getByText(listing.metadata.description)).toBeVisible();
     expect(screen.getByText(support.description)).toBeVisible();
-    expect(screen.getByText('Contact')).toBeVisible();
-    expect(screen.getByText('Email address not available.')).toBeVisible();
+    expect(
+      screen.getByText('No contacts are listed for this product.'),
+    ).toBeVisible();
     for (const [name, href] of [
       [support.url, support.url],
       [support.email_address, `mailto:${support.email_address}`],
@@ -153,6 +154,31 @@ describe('ListingOverview', () => {
     ]) {
       expect(screen.getByRole('link', { name })).toHaveAttribute('href', href);
     }
+  });
+
+  it('shows the short description and support email when the long description and website are missing', async () => {
+    const listing = fixtureEntity('listing');
+    const projection = listing.spec!.pyxis as unknown as PyxisProjection;
+    projection.record = {
+      _id: projection.source.id,
+      descriptions: { short: 'Product summary' },
+      support: { url: null, email_address: 'support@example.com' },
+    };
+
+    await renderInTestApp(
+      <TestApiProvider apis={[[catalogApiRef, new InMemoryCatalogClient()]]}>
+        <EntityProvider entity={listing}>
+          <ListingOverview />
+        </EntityProvider>
+      </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+    );
+
+    expect(screen.getByText('Product summary')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'support@example.com' }),
+    ).toHaveAttribute('href', 'mailto:support@example.com');
+    expect(screen.queryByText('Support website')).not.toBeInTheDocument();
   });
 
   it('opens the matching grade section on the Grades tab from a grade row', async () => {

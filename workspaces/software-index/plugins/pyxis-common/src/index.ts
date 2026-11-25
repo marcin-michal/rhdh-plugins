@@ -61,13 +61,13 @@ export interface SourceListing {
         type?: string | null;
       }[]
     | null;
-  descriptions?: { long: string; short: string } | null;
+  descriptions?: { long?: string | null; short?: string | null } | null;
   logo?: { url?: string | null } | null;
   support?: {
     description?: string | null;
     email_address?: string | null;
     phone_number?: string | null;
-    url: string;
+    url?: string | null;
   } | null;
   /** Pyxis source creation time, separate from Backstage entity metadata. */
   creation_date?: string | null;
@@ -83,8 +83,8 @@ export interface SourceRepository {
   repository?: string | null;
   display_data?: {
     name?: string | null;
-    long_description: string;
-    short_description: string;
+    long_description?: string | null;
+    short_description?: string | null;
   } | null;
   team_id?: string | null;
   product_listings?: string[] | null;
@@ -93,9 +93,9 @@ export interface SourceRepository {
   architectures?: string[] | null;
   documentation_links?:
     | {
-        title: string;
-        type: string;
-        url: string;
+        title?: string | null;
+        type?: string | null;
+        url?: string | null;
       }[]
     | null;
   metrics?: {
@@ -104,8 +104,8 @@ export interface SourceRepository {
   } | null;
   contacts?:
     | {
-        email_address: string;
-        type: string;
+        email_address?: string | null;
+        type?: string | null;
       }[]
     | null;
   /** Pyxis source creation time, separate from Backstage entity metadata. */

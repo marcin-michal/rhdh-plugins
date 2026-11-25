@@ -29,7 +29,13 @@ export function ContactList({
   contacts: readonly ContactListItem[];
   emptyMessage: string;
 }) {
-  if (contacts.length === 0) {
+  const available = contacts
+    .map(contact => ({
+      type: contact.type?.trim(),
+      email: contact.email_address?.trim(),
+    }))
+    .filter(contact => contact.type || contact.email);
+  if (available.length === 0) {
     return (
       <Text as="p" color="secondary">
         {emptyMessage}
@@ -39,22 +45,17 @@ export function ContactList({
 
   return (
     <Flex direction="column" gap="3">
-      {contacts.map((contact, index) => {
-        const type = contact.type?.trim() || 'Contact';
-        const email = contact.email_address?.trim();
-
-        return (
-          <DetailRow key={`${type}:${email ?? ''}:${index}`} label={type}>
-            {email ? (
-              <Link href={`mailto:${email}`}>{email}</Link>
-            ) : (
-              <Text as="span" color="secondary">
-                Email address not available.
-              </Text>
-            )}
-          </DetailRow>
-        );
-      })}
+      {available.map(({ type, email }, index) => (
+        <DetailRow key={`${type}:${email}:${index}`} label={type || 'Contact'}>
+          {email ? (
+            <Link href={`mailto:${email}`}>{email}</Link>
+          ) : (
+            <Text as="span" color="secondary">
+              Email address not available.
+            </Text>
+          )}
+        </DetailRow>
+      ))}
     </Flex>
   );
 }

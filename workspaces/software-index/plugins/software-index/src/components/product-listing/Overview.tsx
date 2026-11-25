@@ -38,6 +38,7 @@ import { ContactList } from '../shared/ContactList';
 import { DetailCard } from '../shared/DetailCard';
 import { DetailRow } from '../shared/DetailRow';
 import { Timestamp } from '../shared/Timestamp';
+import { webUrl } from '../shared/webUrl';
 
 function sourceListing(model: SoftwareIndexEntity): SourceListing | undefined {
   if (model.category !== 'listing' || !model.projection.record) {
@@ -84,14 +85,15 @@ function ListingOverviewContent({ model }: { model: SoftwareIndexEntity }) {
   const status = publicationStateLabel(publicationState(model));
   const description =
     listing?.descriptions?.long?.trim() ||
-    model.entity.metadata.description?.trim() ||
+    model.description?.trim() ||
     'No long description is available.';
   const support = listing?.support;
+  const supportUrl = webUrl(support?.url);
   const hasSupport =
     Boolean(support?.description) ||
     Boolean(support?.email_address) ||
     Boolean(support?.phone_number) ||
-    Boolean(support?.url);
+    Boolean(supportUrl);
   const contacts = listing?.contacts ?? [];
 
   return (
@@ -161,10 +163,10 @@ function ListingOverviewContent({ model }: { model: SoftwareIndexEntity }) {
               )}
               {hasSupport ? (
                 <Flex direction="column" gap="2">
-                  {support?.url && (
+                  {supportUrl && (
                     <DetailRow label="Support website">
-                      <Link href={support.url} target="_blank" rel="noreferrer">
-                        {support.url}
+                      <Link href={supportUrl} target="_blank" rel="noreferrer">
+                        {supportUrl}
                       </Link>
                     </DetailRow>
                   )}

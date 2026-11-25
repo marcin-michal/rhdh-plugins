@@ -158,6 +158,68 @@ describe('http-query-contract HTTP/query contract', () => {
     ).toHaveLength(2);
   });
 
+  it('reads the whole listing page when descriptions or the support URL are missing', async () => {
+    const listings = [
+      {
+        _id: baseline.listings[0]._id,
+        descriptions: { short: null, long: null },
+        support: { url: null, email_address: 'support@example.com' },
+      },
+      { _id: baseline.listings[1]._id, descriptions: {}, support: {} },
+    ];
+    agent
+      .get(endpoint)
+      .intercept({ path: '/graphql', method: 'POST' })
+      .reply(
+        200,
+        result('find_product_listings', listings, {
+          page: 0,
+          page_size: 100,
+          total: listings.length,
+        }),
+      );
+
+    const page = await client.listListings({ page: 0, pageSize: 100 });
+    expect(page.data).toEqual(listings);
+  });
+
+  it('reads the whole repository page with partial descriptions, links and contacts', async () => {
+    const repositories = [
+      {
+        _id: baseline.repositories[0]._id,
+        display_data: { name: 'Base', long_description: null },
+        documentation_links: [
+          { title: null, type: null, url: 'https://example.com/docs' },
+          { url: null },
+        ],
+        contacts: [
+          { email_address: 'image-owner@redhat.com', type: null },
+          { email_address: null },
+        ],
+      },
+      {
+        _id: baseline.repositories[1]._id,
+        display_data: { short_description: null },
+        documentation_links: [{ title: 'Documentation' }],
+        contacts: [{ type: 'Image Owner' }],
+      },
+    ];
+    agent
+      .get(endpoint)
+      .intercept({ path: '/graphql', method: 'POST' })
+      .reply(
+        200,
+        result('find_repositories', repositories, {
+          page: 0,
+          page_size: 100,
+          total: repositories.length,
+        }),
+      );
+
+    const page = await client.listRepositories({ page: 0, pageSize: 100 });
+    expect(page.data).toEqual(repositories);
+  });
+
   it.each(['listing', 'repository'] as const)(
     'vendor-admission keeps null and missing %s candidate evidence available to both policies',
     async kind => {

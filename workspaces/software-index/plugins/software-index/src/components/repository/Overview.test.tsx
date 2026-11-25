@@ -224,6 +224,42 @@ describe('RepositoryOverview', () => {
     expect(screen.getByRole('rowheader', { name: 'A' })).toBeInTheDocument();
   });
 
+  it('renders partial descriptions, documentation links and contacts', async () => {
+    const url = 'https://docs.example.com/getting-started';
+    const repository = repositoryWithDetails({
+      display_data: {
+        long_description: null,
+        short_description: 'Repository summary',
+      },
+      documentation_links: [
+        { title: 'Missing URL', url: null },
+        { title: 'Unsupported URL', url: 'file:///guide' },
+        { title: null, url },
+      ],
+      contacts: [
+        {},
+        { type: 'Image Owner', email_address: null },
+        { email_address: 'owner@example.com' },
+      ],
+    });
+
+    await renderRepositoryOverview(repository);
+
+    expect(screen.getByText('Repository summary')).toBeVisible();
+    expect(screen.getByRole('link', { name: url })).toHaveAttribute(
+      'href',
+      url,
+    );
+    expect(screen.queryByText('Missing URL')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unsupported URL')).not.toBeInTheDocument();
+    expect(screen.getByText('Image Owner')).toBeVisible();
+    expect(screen.getByText('Email address not available.')).toBeVisible();
+    expect(screen.getByText('Contact')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'owner@example.com' }),
+    ).toHaveAttribute('href', 'mailto:owner@example.com');
+  });
+
   it('reports a category mismatch for entities that are not repositories', async () => {
     await renderInTestApp(
       <EntityProvider entity={fixtureEntity('listing')}>

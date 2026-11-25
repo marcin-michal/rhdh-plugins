@@ -465,8 +465,8 @@ export interface SourceListing {
   deleted?: boolean | null;
   // (undocumented)
   descriptions?: {
-    long: string;
-    short: string;
+    long?: string | null;
+    short?: string | null;
   } | null;
   // (undocumented)
   _id: string;
@@ -486,7 +486,7 @@ export interface SourceListing {
     description?: string | null;
     email_address?: string | null;
     phone_number?: string | null;
-    url: string;
+    url?: string | null;
   } | null;
   // (undocumented)
   team_id?: string | null;
@@ -511,23 +511,23 @@ export interface SourceRepository {
   // (undocumented)
   contacts?:
     | {
-        email_address: string;
-        type: string;
+        email_address?: string | null;
+        type?: string | null;
       }[]
     | null;
   creation_date?: string | null;
   // (undocumented)
   display_data?: {
     name?: string | null;
-    long_description: string;
-    short_description: string;
+    long_description?: string | null;
+    short_description?: string | null;
   } | null;
   // (undocumented)
   documentation_links?:
     | {
-        title: string;
-        type: string;
-        url: string;
+        title?: string | null;
+        type?: string | null;
+        url?: string | null;
       }[]
     | null;
   // (undocumented)

@@ -248,10 +248,25 @@ describe.each(selected)(
               entity => entity.spec?.type === 'container-repository',
             ),
           ).toHaveLength(3);
+          const runtime = source.find(
+            entity => entity.metadata.title === 'Runtime',
+          );
+          expect(runtime?.spec?.pyxis).toMatchObject({
+            record: {
+              descriptions: { short: 'Runtime tools' },
+              support: { email_address: 'runtime@example.com' },
+            },
+          });
           const unlisted = source.find(
             entity => entity.metadata.title === 'Unlisted',
           );
-          expect(unlisted).toBeDefined();
+          expect(unlisted?.spec?.pyxis).toMatchObject({
+            record: {
+              display_data: { name: 'Unlisted' },
+              documentation_links: [{ url: 'https://example.com/unlisted' }],
+              contacts: [{ type: 'Image Owner' }],
+            },
+          });
           expect(
             unlisted?.relations?.some(
               relation => relation.type === 'pyxisRepositoryOf',

@@ -158,30 +158,36 @@ const recordBase = {
   last_update_date: date.nullable().optional(),
 };
 const repositoryContactSchema = z.object({
-  email_address: z.string(),
-  type: z.enum([
-    'Product Manager',
-    'Image Owner',
-    'Notification',
-    'Errata Writer',
-    'Doc Owner',
-    'QE Owner',
-    'Program Manager',
-  ]),
+  email_address: optionalString,
+  type: z
+    .enum([
+      'Product Manager',
+      'Image Owner',
+      'Notification',
+      'Errata Writer',
+      'Doc Owner',
+      'QE Owner',
+      'Program Manager',
+    ])
+    .nullable()
+    .optional(),
 });
 const documentationLinkSchema = z.object({
-  title: z.string(),
-  type: z.enum([
-    'Customer Case Study',
-    'Documentation',
-    'White Paper',
-    'Blog',
-    'Demo Video',
-    'Product Datasheet',
-    'Recorded Webinar',
-    'Solution Brief',
-  ]),
-  url: z.string(),
+  title: optionalString,
+  type: z
+    .enum([
+      'Customer Case Study',
+      'Documentation',
+      'White Paper',
+      'Blog',
+      'Demo Video',
+      'Product Datasheet',
+      'Recorded Webinar',
+      'Solution Brief',
+    ])
+    .nullable()
+    .optional(),
+  url: optionalString,
 });
 const resource = {
   ...recordBase,
@@ -197,7 +203,7 @@ const records = {
     deleted: z.boolean().nullable().optional(),
     repositories: z.array(sourceId).nullable().optional(),
     descriptions: z
-      .object({ long: z.string(), short: z.string() })
+      .object({ long: optionalString, short: optionalString })
       .nullable()
       .optional(),
     contacts: z
@@ -215,7 +221,7 @@ const records = {
         description: optionalString,
         email_address: optionalString,
         phone_number: optionalString,
-        url: z.string(),
+        url: optionalString,
       })
       .nullable()
       .optional(),
@@ -227,8 +233,8 @@ const records = {
     display_data: z
       .object({
         name: optionalString,
-        long_description: z.string(),
-        short_description: z.string(),
+        long_description: optionalString,
+        short_description: optionalString,
       })
       .nullable()
       .optional(),
