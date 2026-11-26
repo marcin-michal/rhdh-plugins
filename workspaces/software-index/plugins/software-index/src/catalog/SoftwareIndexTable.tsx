@@ -123,17 +123,12 @@ function SoftwareIndexResults({
   const { tableProps, reload } = useTable<SoftwareIndexTableItem>({
     mode: 'offset',
     search,
-    initialSort: { column: 'name', direction: 'ascending' },
-    getData: async ({ offset, pageSize, sort, search: searchTerm }) => {
+    getData: async ({ offset, pageSize, search: searchTerm }) => {
       const term = searchTerm.trim();
       const response = await catalogApi.queryEntities({
         filter: softwareIndexEntityFilter(kind),
         limit: pageSize,
         offset,
-        orderFields: {
-          field: 'metadata.title',
-          order: sort?.direction === 'descending' ? 'desc' : 'asc',
-        },
         fields: SOFTWARE_INDEX_ENTITY_FIELDS,
         fullTextFilter: term
           ? { term, fields: SOFTWARE_INDEX_SEARCH_FIELDS }

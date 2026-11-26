@@ -124,6 +124,12 @@ describe('browser-safe projection contracts', () => {
       expect(guards[kind]({ ...e, spec: { ...e.spec, type: 'other' } })).toBe(
         kind === 'user',
       );
+
+      const annotations = e.metadata.annotations!;
+      delete annotations[PYXIS_ANNOTATIONS.sourceInstance];
+      expect(guards[kind](e)).toBe(true);
+      annotations[PYXIS_ANNOTATIONS.sourceInstance] = 'other';
+      expect(guards[kind](e)).toBe(false);
     },
   );
   it.each([

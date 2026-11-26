@@ -17,13 +17,9 @@
 import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
 import type { QueryEntitiesResponse } from '@backstage/catalog-client';
 import { InMemoryCatalogClient } from '@backstage/catalog-client/testUtils';
-import {
-  CATALOG_FILTER_EXISTS,
-  catalogApiRef,
-  entityRouteRef,
-} from '@backstage/plugin-catalog-react';
+import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { renderInTestApp, TestApiProvider } from '@backstage/test-utils';
-import { act, screen, waitFor, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   PYXIS_ANNOTATIONS,
@@ -296,6 +292,7 @@ describe('SoftwareIndexTable', () => {
     const teams = Array.from({ length: 201 }, (_, index) =>
       fixtureEntity('team', index + 1),
     );
+    delete teams[200].metadata.annotations![PYXIS_ANNOTATIONS.sourceInstance];
     const projection = listing.spec!.pyxis as unknown as PyxisProjection;
     Object.assign(projection.record!, {
       team_id: teams[200].metadata.annotations![PYXIS_ANNOTATIONS.sourceId],
@@ -312,8 +309,6 @@ describe('SoftwareIndexTable', () => {
       expect.objectContaining({
         filter: {
           'metadata.namespace': 'pyxis',
-          [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`]:
-            CATALOG_FILTER_EXISTS,
           [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: 'team',
         },
       }),
@@ -327,76 +322,52 @@ describe('SoftwareIndexTable', () => {
           'metadata.name',
           'metadata.namespace',
           'metadata.title',
-          `metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`,
           `metadata.annotations.${PYXIS_ANNOTATIONS.sourceId}`,
           `metadata.annotations.${PYXIS_ANNOTATIONS.projectionVersion}`,
           'spec.type',
+          'spec.pyxis.source.sourceInstance',
           'spec.pyxis.record.name',
         ],
       }),
     );
   });
 
-  it('sorts by name and paginates the selected kind', async () => {
+  it('paginates the selected kind in catalog response order', async () => {
     const user = userEvent.setup();
-    const listings = Array.from({ length: 40 }, (_, index) => {
-      const listing = fixtureEntity('listing', index + 1);
-      listing.metadata.title = `Listing ${String(index + 1).padStart(2, '0')}`;
-      return listing;
-    });
-    const catalogApi = new InMemoryCatalogClient({ entities: listings });
-    const queryCatalog = catalogApi.queryEntities.bind(catalogApi);
+    const listings = Array.from({ length: 40 }, (_, index) =>
+      fixtureEntity('listing', 40 - index),
+    );
     const { queryEntities, streamEntities } = await renderTable(
       'listing',
-      [],
-      catalogApi,
+      listings,
     );
-    const filter = expect.objectContaining({
+    const filter = {
       'metadata.namespace': 'pyxis',
       [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: 'listing',
-    });
+    };
     expect(
-      await screen.findByRole('link', { name: 'Listing 01' }),
+      await screen.findByRole('link', { name: 'Listing 40' }),
     ).toBeVisible();
     expect(screen.getAllByRole('row')).toHaveLength(21);
+    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 40');
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' }),
+    ).not.toHaveAttribute('aria-sort');
     expect(queryEntities).toHaveBeenCalledWith(
       expect.objectContaining({ filter, limit: 20, offset: 0 }),
     );
 
-    let releaseSortedPage!: () => void;
-    const sortedPagePending = new Promise<void>(resolve => {
-      releaseSortedPage = resolve;
-    });
-    queryEntities.mockImplementationOnce(async request => {
-      await sortedPagePending;
-      return queryCatalog(request);
-    });
-    await user.click(screen.getByRole('columnheader', { name: /Name/ }));
-    await waitFor(() =>
-      expect(queryEntities).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          orderFields: { field: 'metadata.title', order: 'desc' },
-        }),
-      ),
-    );
-    await act(async () => releaseSortedPage());
-    expect(
-      await screen.findByRole('link', { name: 'Listing 40' }),
-    ).toBeVisible();
-    expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 40');
     await user.click(screen.getByRole('button', { name: 'Next table page' }));
     expect(
       await screen.findByRole('link', { name: 'Listing 20' }),
     ).toBeVisible();
     expect(screen.getAllByRole('row')[1]).toHaveTextContent('Listing 20');
     expect(queryEntities).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        filter,
-        limit: 20,
-        offset: 20,
-        orderFields: { field: 'metadata.title', order: 'desc' },
-      }),
+      expect.objectContaining({ filter, limit: 20, offset: 20 }),
     );
+    for (const [request] of queryEntities.mock.calls) {
+      expect(request).not.toHaveProperty('orderFields');
+    }
     expect(streamEntities).toHaveBeenCalledTimes(1);
   });
 });

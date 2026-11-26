@@ -90,7 +90,6 @@ const relatedEntityColumns: ColumnConfig<RelatedEntityTableRow>[] = [
     id: 'name',
     label: 'Name',
     width: '2fr',
-    isSortable: true,
     isRowHeader: true,
     cell: row => <CellText title={row.name} />,
   },
@@ -164,8 +163,7 @@ function RelatedEntitiesResults({
 
   const { tableProps, search, reload } = useTable<RelatedEntityTableRow>({
     mode: 'offset',
-    initialSort: { column: 'name', direction: 'ascending' },
-    getData: async ({ offset, pageSize, sort, search: searchTerm, signal }) => {
+    getData: async ({ offset, pageSize, search: searchTerm, signal }) => {
       const term = searchTerm.trim();
       const page = await catalogApi.queryEntities({
         filter: {
@@ -178,10 +176,6 @@ function RelatedEntitiesResults({
         offset,
         limit: pageSize,
         fields: relatedEntityFields,
-        orderFields: {
-          field: 'metadata.title',
-          order: sort?.direction === 'descending' ? 'desc' : 'asc',
-        },
         fullTextFilter: term
           ? { term, fields: ['metadata.title', 'metadata.name'] }
           : undefined,

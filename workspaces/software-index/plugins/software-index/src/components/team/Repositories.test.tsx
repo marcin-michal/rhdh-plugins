@@ -113,15 +113,9 @@ describe('Team owned entity tabs', () => {
     );
   });
 
-  it('paginates, searches and sorts large ownership sets in the catalog', async () => {
+  it('paginates and searches large ownership sets in catalog response order', async () => {
     const user = userEvent.setup();
     const entities = softwareIndexFixtures(250);
-    for (const entity of entities) {
-      const index = entity.metadata.name.match(/^repository-(\d+)$/)?.[1];
-      if (index) {
-        entity.metadata.title = `Repository ${index.padStart(4, '0')}`;
-      }
-    }
     const team = entities.find(entity => entity.metadata.name === 'team-1')!;
     const { queryEntities, getEntitiesByRefs } = await renderTeamContent(
       <TeamRepositories />,
@@ -129,15 +123,22 @@ describe('Team owned entity tabs', () => {
       entities,
     );
 
-    expect(await screen.findByText('Repository 0001')).toBeInTheDocument();
-    expect(screen.queryByText('Repository 0041')).not.toBeInTheDocument();
+    expect(await screen.findByText('Repository 1')).toBeInTheDocument();
+    expect(screen.queryByText('Repository 41')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' }),
+    ).not.toHaveAttribute('aria-sort');
     expect(queryEntities).toHaveBeenCalledTimes(1);
     expect(queryEntities).toHaveBeenCalledWith(
       expect.objectContaining({
-        filter: expect.objectContaining({
+        filter: {
+          'metadata.namespace': 'pyxis',
+          'metadata.annotations.pyxis.redhat.com/source-kind': 'repository',
+          'metadata.annotations.pyxis.redhat.com/projection-version': '1',
+          kind: 'Resource',
           'relations.ownedBy': 'group:pyxis/team-1',
           'spec.type': 'container-repository',
-        }),
+        },
         limit: 20,
         offset: 0,
         fields: expect.not.arrayContaining(['relations']),
@@ -145,14 +146,14 @@ describe('Team owned entity tabs', () => {
     );
 
     await user.click(screen.getByRole('button', { name: 'Next table page' }));
-    expect(await screen.findByText('Repository 0041')).toBeInTheDocument();
+    expect(await screen.findByText('Repository 41')).toBeInTheDocument();
     expect(queryEntities).toHaveBeenLastCalledWith(
       expect.objectContaining({ limit: 20, offset: 20 }),
     );
 
     const search = screen.getByRole('textbox', { name: 'Search by name' });
     await user.type(search, 'repository-241');
-    expect(await screen.findByText('Repository 0241')).toBeInTheDocument();
+    expect(await screen.findByText('Repository 241')).toBeInTheDocument();
     expect(queryEntities).toHaveBeenLastCalledWith(
       expect.objectContaining({
         offset: 0,
@@ -164,15 +165,10 @@ describe('Team owned entity tabs', () => {
     );
 
     await user.clear(search);
-    expect(await screen.findByText('Repository 0001')).toBeInTheDocument();
-    await user.click(screen.getByRole('columnheader', { name: /Name/ }));
-    expect(await screen.findByText('Repository 0243')).toBeInTheDocument();
-    expect(queryEntities).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        offset: 0,
-        orderFields: { field: 'metadata.title', order: 'desc' },
-      }),
-    );
+    expect(await screen.findByText('Repository 1')).toBeInTheDocument();
+    for (const [request] of queryEntities.mock.calls) {
+      expect(request).not.toHaveProperty('orderFields');
+    }
     expect(getEntitiesByRefs).not.toHaveBeenCalled();
   });
 });

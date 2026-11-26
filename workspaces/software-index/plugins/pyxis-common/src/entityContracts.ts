@@ -45,6 +45,7 @@ export function parsePyxisEntity(entity: Entity): PyxisProjection {
   const projection = parsePyxisProjection(entity.spec?.pyxis);
   const category = projection.source.kind;
   const annotations = entity.metadata.annotations;
+  const sourceInstance = annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
   if (
     entity.metadata.namespace !== PYXIS_NAMESPACE ||
     entity.kind.toLocaleLowerCase('en-US') !==
@@ -58,8 +59,8 @@ export function parsePyxisEntity(entity: Entity): PyxisProjection {
     annotations?.[PYXIS_ANNOTATIONS.projectionVersion] !== '1' ||
     (category !== 'user' &&
       entity.spec?.type !== PYXIS_ENTITY_TYPES[category]) ||
-    projection.source.sourceInstance !==
-      annotations?.[PYXIS_ANNOTATIONS.sourceInstance] ||
+    (sourceInstance !== undefined &&
+      sourceInstance !== projection.source.sourceInstance) ||
     projection.source.id !== annotations?.[PYXIS_ANNOTATIONS.sourceId]
   )
     throw new Error('Managed Pyxis catalog identity mismatch');

@@ -258,8 +258,9 @@ try {
                 config: {
                   filter: {
                     $not: {
-                      'metadata.annotations.pyxis.redhat.com/source-instance': {
-                        $exists: true,
+                      'metadata.namespace': 'pyxis',
+                      'metadata.annotations.pyxis.redhat.com/source-kind': {
+                        $in: ['listing', 'repository', 'team', 'user'],
                       },
                     },
                   },

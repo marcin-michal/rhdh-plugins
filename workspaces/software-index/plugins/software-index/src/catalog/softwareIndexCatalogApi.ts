@@ -15,10 +15,7 @@
  */
 
 import { stringifyEntityRef } from '@backstage/catalog-model';
-import {
-  CATALOG_FILTER_EXISTS,
-  type CatalogApi,
-} from '@backstage/plugin-catalog-react';
+import type { CatalogApi } from '@backstage/plugin-catalog-react';
 import {
   PYXIS_ANNOTATIONS,
   PYXIS_ENTITY_TYPES,
@@ -37,10 +34,10 @@ const ENTITY_LABEL_FIELDS = [
 
 const TEAM_DIRECTORY_FIELDS = [
   ...ENTITY_LABEL_FIELDS,
-  `metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`,
   `metadata.annotations.${PYXIS_ANNOTATIONS.sourceId}`,
   `metadata.annotations.${PYXIS_ANNOTATIONS.projectionVersion}`,
   'spec.type',
+  'spec.pyxis.source.sourceInstance',
   'spec.pyxis.record.name',
 ];
 
@@ -65,8 +62,6 @@ export const SOFTWARE_INDEX_SEARCH_FIELDS: string[] = [
 export function softwareIndexEntityFilter(category: SoftwareIndexCategory) {
   return {
     'metadata.namespace': PYXIS_NAMESPACE,
-    [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`]:
-      CATALOG_FILTER_EXISTS,
     [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]: category,
   };
 }
@@ -84,18 +79,17 @@ export async function fetchSoftwareIndexTeamDirectory(
   for await (const entities of pages) {
     for (const entity of entities) {
       const annotations = entity.metadata.annotations;
-      const sourceInstance = annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
       const id = annotations?.[PYXIS_ANNOTATIONS.sourceId];
       const isTeam =
         entity.kind.toLowerCase() === 'group' &&
         entity.spec?.type === PYXIS_ENTITY_TYPES.team &&
         annotations?.[PYXIS_ANNOTATIONS.projectionVersion] === '1';
-      if (!isTeam || !sourceInstance || !id) {
+      if (!isTeam || !id) {
         continue;
       }
 
       const projection = entity.spec?.pyxis as
-        | { record?: { name?: unknown } }
+        | { source?: { sourceInstance?: unknown }; record?: { name?: unknown } }
         | undefined;
       const recordName = projection?.record?.name;
       const name = typeof recordName === 'string' ? recordName.trim() : '';
@@ -107,7 +101,10 @@ export async function fetchSoftwareIndexTeamDirectory(
       const ref = stringifyEntityRef(entity);
       const team: SoftwareIndexTeam = { entity, ref, label };
       teams.set(ref, team);
-      teams.set(sourceKey({ sourceInstance, kind: 'team', id }), team);
+      const sourceInstance = projection?.source?.sourceInstance;
+      if (typeof sourceInstance === 'string') {
+        teams.set(sourceKey({ sourceInstance, kind: 'team', id }), team);
+      }
     }
   }
 

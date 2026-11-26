@@ -147,7 +147,6 @@ const nameColumn: ColumnConfig<SoftwareIndexTableRow> = {
   id: 'name',
   label: 'Name',
   width: '2fr',
-  isSortable: true,
   isRowHeader: true,
   cell: row => <CellText title={row.name} href={row.href} />,
 };

@@ -134,9 +134,11 @@ describe('Software Index NFS wiring', () => {
     'mounts and filters the lazy catalog tabs for $entityPath',
     async ({ entityPath, overview, relatedTabs }) => {
       const user = userEvent.setup();
-      const catalogApi = new InMemoryCatalogClient({
-        entities: softwareIndexFixtures(13),
-      });
+      const entities = softwareIndexFixtures(13);
+      for (const entity of entities) {
+        delete entity.metadata.annotations?.[PYXIS_ANNOTATIONS.sourceInstance];
+      }
+      const catalogApi = new InMemoryCatalogClient({ entities });
       renderTestApp({
         features: [catalog, plugin],
         initialRouteEntries: [`/catalog/pyxis/${entityPath}`],
@@ -149,8 +151,9 @@ describe('Software Index NFS wiring', () => {
                   config: {
                     filter: {
                       $not: {
-                        [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceInstance}`]:
-                          { $exists: true },
+                        'metadata.namespace': 'pyxis',
+                        [`metadata.annotations.${PYXIS_ANNOTATIONS.sourceKind}`]:
+                          { $in: ['listing', 'repository', 'team', 'user'] },
                       },
                     },
                   },
